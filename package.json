@@ -1,0 +1,12 @@
+{
+  "name": "tierlist-app",
+  "version": "1.0.0",
+  "description": "A tier list web application with Flask and Tailwind CSS",
+  "scripts": {
+    "build-css": "tailwindcss -i ./static/css/input.css -o ./static/css/output.css --watch"
+  },
+  "devDependencies": {
+    "tailwindcss": "^3.4.0",
+    "daisyui": "^4.12.0"
+  }
+} 

@@ -1,0 +1,187 @@
+# 🏆 Tier List Maker
+
+A modern web application for creating interactive tier lists with drag-and-drop functionality. Built with Flask, Tailwind CSS, and DaisyUI.
+
+## Features
+
+- **🎨 Beautiful UI**: Modern design with DaisyUI components and Coffee theme
+- **📁 File Upload**: Support for PNG, JPG, GIF images up to 5MB each
+- **🎯 Drag & Drop**: Intuitive drag-and-drop interface for organizing items
+- **⚙️ Customizable Tiers**: Adjust tier count (3-8) and edit tier labels
+- **🌙 Theme Support**: Toggle between Coffee, Dark, and Light themes
+- **💾 Save Functionality**: Export tier lists as JSON files
+- **📱 Responsive**: Works on desktop and mobile devices
+
+## Technology Stack
+
+- **Backend**: Python 3.11 + Flask
+- **Frontend**: HTML5, Vanilla JavaScript
+- **Styling**: Tailwind CSS + DaisyUI 5.0
+- **File Storage**: Local file system
+
+## Setup Instructions
+
+### Prerequisites
+
+- Python 3.11 or higher
+- Node.js and npm
+
+### Installation
+
+1. **Clone and navigate to the project**:
+   ```bash
+   cd TierList
+   ```
+
+2. **Set up Python virtual environment**:
+   ```bash
+   # Windows
+   .\.venv\Scripts\Activate.ps1
+   
+   # Linux/Mac
+   source .venv/bin/activate
+   ```
+
+3. **Install Python dependencies**:
+   ```bash
+   pip install -r requirements.txt
+   ```
+
+4. **Install Node.js dependencies**:
+   ```bash
+   npm install
+   ```
+
+5. **Build Tailwind CSS**:
+   ```bash
+   npm run build-css
+   # Or manually:
+   npx tailwindcss -i ./static/css/input.css -o ./static/css/output.css
+   ```
+
+### Running the Application
+
+1. **Start the Flask development server**:
+   ```bash
+   python app.py
+   ```
+
+2. **Open your browser** and navigate to:
+   ```
+   http://localhost:5000
+   ```
+
+### Development Mode
+
+For development with automatic CSS rebuilding:
+
+```bash
+# Terminal 1: Watch and rebuild CSS
+npm run build-css
+
+# Terminal 2: Run Flask server
+python app.py
+```
+
+## Usage Guide
+### Creating a Tier List
+
+1. **Upload Images**: 
+   - Click the upload area or drag and drop image files
+   - Supported formats: PNG, JPG, GIF (max 5MB each)
+
+2. **Customize Tiers**:
+   - Use the slider to adjust the number of tiers (3-8)
+   - Click on tier labels to edit them (S, A, B, C, etc.)
+
+3. **Organize Items**:
+   - Drag images from the upload area to tier containers
+   - Drag images between different tiers
+   - Hover over images to see delete buttons
+
+4. **Save Your Work**:
+   - Click "Save Tier List" to download as JSON
+   - Theme preference is saved automatically
+
+### Interface Elements
+
+- **Header**: App title and theme toggle dropdown
+- **Upload Section**: File drop zone and preview grid
+- **Tier Controls**: Slider for tier count and save button
+- **Tier List**: Interactive tier containers with labels
+
+## Project Structure
+
+```
+TierList/
+├── app.py                  # Flask application
+├── requirements.txt        # Python dependencies
+├── package.json           # Node.js dependencies
+├── tailwind.config.js     # Tailwind configuration
+├── .env                   # Environment variables
+├── .gitignore            # Git ignore rules
+├── README.md             # Project documentation
+├── static/               # Static assets
+│   ├── css/
+│   │   ├── input.css     # Tailwind input
+│   │   └── output.css    # Generated CSS
+│   └── js/
+│       └── app.js        # Main JavaScript
+├── templates/            # HTML templates
+│   └── index.html        # Main page
+└── uploads/              # Uploaded images
+```
+
+## Configuration
+### Environment Variables (.env)
+```env
+FLASK_APP=app.py
+FLASK_ENV=development
+SECRET_KEY=your-secret-key-change-in-production
+MAX_CONTENT_LENGTH=5242880  # 5MB file size limit
+```
+
+### Tailwind Config
+
+The application uses DaisyUI with these themes:
+- ☕ Coffee (default)
+- 🌙 Dark
+- ☀️ Light
+
+## API Endpoints
+
+- `GET /` - Main application page
+- `POST /upload` - File upload endpoint
+- `GET /static/uploads/<filename>` - Serve uploaded files
+
+## File Upload Details
+
+- **Allowed Types**: PNG, JPG, JPEG, GIF
+- **Size Limit**: 5MB per file
+- **Storage**: Local `uploads/` directory
+- **Naming**: Unique filenames to prevent conflicts
+
+## Browser Support
+
+- Chrome/Chromium 90+
+- Firefox 88+
+- Safari 14+
+- Edge 90+
+
+## Troubleshooting
+
+### Common Issues
+
+1. **CSS not loading**: Run `npm run build-css` to rebuild styles
+2. **Upload fails**: Check file size (max 5MB) and format (PNG/JPG/GIF)
+3. **Virtual environment**: Ensure you've activated the `.venv` environment
+
+### Development
+
+- Use browser dev tools to debug JavaScript
+- Check Flask console for backend errors
+- Verify file permissions for `uploads/` directory
+
+## License
+
+This project is open source and available under the MIT License. 

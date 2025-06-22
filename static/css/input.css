@@ -1,0 +1,28 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* custom tier list styles */
+.tier-container {
+  min-height: 120px;
+  transition: all 0.3s ease;
+}
+.tier-container.drag-over {
+  @apply border-2 border-dashed border-primary bg-base-200;
+}
+.tier-item {
+  transition: all 0.2s ease;
+}
+.tier-item:hover {
+  @apply scale-105;
+}
+.tier-item.dragging {
+  @apply opacity-50 scale-95;
+}
+
+.upload-zone {
+  transition: all 0.3s ease;
+}
+.upload-zone.drag-over {
+  @apply border-primary bg-primary/10;
+} 
