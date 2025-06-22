@@ -1,6 +1,6 @@
 // tier list application state
 let tierData = [];
-let uploadedImages = [];
+let uploadedFiles = [];
 let draggedElement = null;
 // default tier labels
 const DEFAULT_TIER_LABELS = ['S', 'A', 'B', 'C', 'D', 'F', 'G', 'H'];
@@ -40,7 +40,6 @@ function setupFileUpload() {
     uploadZone.addEventListener('dragleave', handleDragLeave);
     uploadZone.addEventListener('drop', handleFileDrop);
 }
-
 function handleDragOver(e) {
     e.preventDefault();
     e.currentTarget.classList.add('drag-over');
@@ -49,7 +48,6 @@ function handleDragLeave(e) {
     e.preventDefault();
     e.currentTarget.classList.remove('drag-over');
 }
-
 function handleFileDrop(e) {
     e.preventDefault();
     e.currentTarget.classList.remove('drag-over');
@@ -78,7 +76,6 @@ function uploadFiles(files) {
     }
     //show loading state
     showNotification(`Uploading ${validFiles} file(s)...`, 'info');
-
     fetch('/upload', {
         method: 'POST',
         body: formData
@@ -88,9 +85,9 @@ function uploadFiles(files) {
         if (data.error) {
             showNotification(data.error, 'error');
         } else {
-            uploadedImages = [...uploadedImages, ...data.files];
-            displayUploadedImages();
-            showNotification(`Successfully uploaded ${data.files.length} image(s)!`, 'success');
+            uploadedFiles = [...uploadedFiles, ...data.files];
+            displayUploadedFiles();
+            showNotification(`Successfully uploaded ${data.files.length} file(s)!`, 'success');
         }
     })
     .catch(error => {
@@ -99,64 +96,81 @@ function uploadFiles(files) {
     });
 }
 function validateFile(file) {
-    const allowedTypes = ['image/png', 'image/jpeg', 'image/jpg', 'image/gif'];
+    const allowedTypes = [
+        'image/png', 'image/jpeg', 'image/jpg', 'image/gif',
+        'audio/mpeg', 'audio/mp3', 'audio/wav', 'audio/ogg', 'audio/mp4', 'audio/aac'
+    ];
     const maxSize = 5 * 1024 * 1024; //5MB
     if (!allowedTypes.includes(file.type)) {
         showNotification(`Invalid file type: ${file.name}`, 'error');
         return false;
     }
-
     if (file.size > maxSize) {
         showNotification(`File too large: ${file.name} (max 5MB)`, 'error');
         return false;
     }
-
     return true;
 }
-function displayUploadedImages() {
+function displayUploadedFiles() {
     const preview = document.getElementById('upload-preview');
     preview.innerHTML = '';
-    if (uploadedImages.length === 0) {
+    if (uploadedFiles.length === 0) {
         preview.classList.add('hidden');
         return;
     }
 
     preview.classList.remove('hidden');
-    uploadedImages.forEach(image => {
-        const imgElement = createDraggableImage(image);
-        preview.appendChild(imgElement);
+    uploadedFiles.forEach(file => {
+        const fileElement = createDraggableFile(file);
+        preview.appendChild(fileElement);
     });
 }
-
-function createDraggableImage(image) {
+function createDraggableFile(file) {
     const container = document.createElement('div');
     container.className = 'tier-item relative group cursor-move';
     container.draggable = true;
-    container.dataset.imageId = image.filename;
-    container.innerHTML = `
-        <img src="${image.url}" alt="${image.original_name}" 
-             class="w-full h-20 object-cover rounded border-2 border-base-300 group-hover:border-primary">
-        <div class="absolute inset-0 bg-black bg-opacity-0 group-hover:bg-opacity-20 rounded transition-all"></div>
-        <div class="absolute top-1 right-1 opacity-0 group-hover:opacity-100 transition-opacity">
-            <button onclick="removeImage('${image.filename}')" 
-                    class="btn btn-xs btn-circle btn-error">✕</button>
-        </div>
-    `;
+    container.dataset.fileId = file.filename;
+    
+    if (file.is_audio) {
+        container.innerHTML = `
+            <div class="w-full h-20 bg-base-300 rounded border-2 border-base-300 group-hover:border-primary flex flex-col items-center justify-center p-2">
+                <div class="text-2xl">🎵</div>
+                <div class="text-xs text-center truncate w-full">${file.original_name}</div>
+                <audio controls class="w-full mt-1" style="height: 20px;">
+                    <source src="${file.url}" type="audio/mpeg">
+                    Your browser does not support the audio element.
+                </audio>
+            </div>
+            <div class="absolute inset-0 bg-black bg-opacity-0 group-hover:bg-opacity-20 rounded transition-all pointer-events-none"></div>
+            <div class="absolute top-1 right-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                <button onclick="removeFile('${file.filename}')" 
+                        class="btn btn-xs btn-circle btn-error">✕</button>
+            </div>
+        `;
+    } else {
+        container.innerHTML = `
+            <img src="${file.url}" alt="${file.original_name}" 
+                 class="w-full h-20 object-cover rounded border-2 border-base-300 group-hover:border-primary">
+            <div class="absolute inset-0 bg-black bg-opacity-0 group-hover:bg-opacity-20 rounded transition-all"></div>
+            <div class="absolute top-1 right-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                <button onclick="removeFile('${file.filename}')" 
+                        class="btn btn-xs btn-circle btn-error">✕</button>
+            </div>
+        `;
+    }
+    
     //drag events
-    container.addEventListener('dragstart', handleImageDragStart);
-    container.addEventListener('dragend', handleImageDragEnd);
-
+    container.addEventListener('dragstart', handleFileDragStart);
+    container.addEventListener('dragend', handleFileDragEnd);
     return container;
 }
-
-function removeImage(filename) {
-    uploadedImages = uploadedImages.filter(img => img.filename !== filename);
-    
+function removeFile(filename) {
+    uploadedFiles = uploadedFiles.filter(file => file.filename !== filename);
     //remove from tiers as well
     tierData.forEach(tier => {
-        tier.images = tier.images.filter(img => img.filename !== filename);
+        tier.files = tier.files.filter(file => file.filename !== filename);
     });
-    displayUploadedImages();
+    displayUploadedFiles();
     renderTiers();
 }
 // tier controls
@@ -164,30 +178,31 @@ function setupTierControls() {
     const slider = document.getElementById('tier-slider');
     const countDisplay = document.getElementById('tier-count-display');
     const saveBtn = document.getElementById('save-btn');
-
+    const importBtn = document.getElementById('import-btn');
+    const importInput = document.getElementById('import-input');
+    
     slider.addEventListener('input', (e) => {
         const count = parseInt(e.target.value);
         countDisplay.textContent = count;
         updateTierCount(count);
     });
-
+    
     saveBtn.addEventListener('click', saveTierList);
+    importBtn.addEventListener('click', () => importInput.click());
+    importInput.addEventListener('change', handleImportFile);
 }
-
 function generateDefaultTiers() {
     const count = 5;
     tierData = [];
-    
     for (let i = 0; i < count; i++) {
         tierData.push({
             id: `tier-${i}`,
             label: DEFAULT_TIER_LABELS[i],
-            images: []
+            files: []
         });
     }
     renderTiers();
 }
-
 function updateTierCount(newCount) {
     const currentCount = tierData.length;
     if (newCount > currentCount) {
@@ -196,18 +211,17 @@ function updateTierCount(newCount) {
             tierData.push({
                 id: `tier-${i}`,
                 label: DEFAULT_TIER_LABELS[i] || `T${i + 1}`,
-                images: []
+                files: []
             });
         }
     } else if (newCount < currentCount) {
-        //remove excess tiers and move their images back to upload area
+        //remove excess tiers and move their files back to upload area
         const removedTiers = tierData.splice(newCount);
         removedTiers.forEach(tier => {
-            uploadedImages = [...uploadedImages, ...tier.images];
+            uploadedFiles = [...uploadedFiles, ...tier.files];
         });
-        displayUploadedImages();
+        displayUploadedFiles();
     }
-    
     renderTiers();
 }
 function renderTiers() {
@@ -237,25 +251,42 @@ function createTierElement(tier, index) {
                      ondrop="handleTierDrop(event, ${index})" 
                      ondragover="handleTierDragOver(event)"
                      ondragleave="handleTierDragLeave(event)">
-                    ${tier.images.map(image => createTierImageHTML(image)).join('')}
+                    ${tier.files.map(file => createTierFileHTML(file)).join('')}
                 </div>
             </div>
         </div>
     `;
     return tierDiv;
 }
-
-function createTierImageHTML(image) {
-    return `
-        <div class="tier-item relative group cursor-move" 
-             draggable="true" 
-             data-image-id="${image.filename}"
-             onmousedown="handleImageDragStart(event)"
-             onmouseup="handleImageDragEnd(event)">
-            <img src="${image.url}" alt="${image.original_name}" 
-                 class="w-16 h-16 object-cover rounded border border-base-300">
-        </div>
-    `;
+function createTierFileHTML(file) {
+    if (file.is_audio) {
+        return `
+            <div class="tier-item relative group cursor-move" 
+                 draggable="true" 
+                 data-file-id="${file.filename}"
+                 onmousedown="handleFileDragStart(event)"
+                 onmouseup="handleFileDragEnd(event)">
+                <div class="w-16 h-16 bg-base-300 rounded border border-base-300 flex flex-col items-center justify-center p-1">
+                    <div class="text-lg">🎵</div>
+                    <div class="text-xs text-center truncate w-full">${file.original_name.substring(0, 8)}...</div>
+                    <audio controls class="w-full mt-1" style="height: 16px; transform: scale(0.8);">
+                        <source src="${file.url}" type="audio/mpeg">
+                    </audio>
+                </div>
+            </div>
+        `;
+    } else {
+        return `
+            <div class="tier-item relative group cursor-move" 
+                 draggable="true" 
+                 data-file-id="${file.filename}"
+                 onmousedown="handleFileDragStart(event)"
+                 onmouseup="handleFileDragEnd(event)">
+                <img src="${file.url}" alt="${file.original_name}" 
+                     class="w-16 h-16 object-cover rounded border border-base-300">
+            </div>
+        `;
+    }
 }
 function editTierLabel(tierIndex) {
     const currentLabel = tierData[tierIndex].label;
@@ -267,19 +298,22 @@ function editTierLabel(tierIndex) {
     }
 }
 // drag and drop functionality
-function handleImageDragStart(e) {
+function handleFileDragStart(e) {
     draggedElement = e.currentTarget;
     draggedElement.classList.add('dragging');
     e.dataTransfer.effectAllowed = 'move';
     e.dataTransfer.setData('text/html', draggedElement.outerHTML);
 }
-
-function handleImageDragEnd(e) {
+function handleFileDragEnd(e) {
     if (draggedElement) {
         draggedElement.classList.remove('dragging');
         draggedElement = null;
     }
 }
+
+// backward compatibility aliases
+const handleImageDragStart = handleFileDragStart;
+const handleImageDragEnd = handleFileDragEnd;
 function handleTierDragOver(e) {
     e.preventDefault();
     e.dataTransfer.dropEffect = 'move';
@@ -288,33 +322,31 @@ function handleTierDragOver(e) {
 function handleTierDragLeave(e) {
     e.currentTarget.classList.remove('drag-over');
 }
-
 function handleTierDrop(e, tierIndex) {
     e.preventDefault();
     e.currentTarget.classList.remove('drag-over');
     if (!draggedElement) return;
-    const imageId = draggedElement.dataset.imageId;
-    const image = findImageById(imageId);
-    if (!image) return;
-
-    //remove image from its current location
-    removeImageFromCurrentLocation(imageId);
+    const fileId = draggedElement.dataset.fileId;
+    const file = findFileById(fileId);
+    if (!file) return;
+    //remove file from its current location
+    removeFileFromCurrentLocation(fileId);
     //add to new tier
-    tierData[tierIndex].images.push(image);
+    tierData[tierIndex].files.push(file);
     //refresh displays
-    displayUploadedImages();
+    displayUploadedFiles();
     renderTiers();
 }
-function findImageById(imageId) {
-    return uploadedImages.find(img => img.filename === imageId) ||
-           tierData.flatMap(tier => tier.images).find(img => img.filename === imageId);
+function findFileById(fileId) {
+    return uploadedFiles.find(file => file.filename === fileId) ||
+           tierData.flatMap(tier => tier.files).find(file => file.filename === fileId);
 }
-function removeImageFromCurrentLocation(imageId) {
-    //remove from uploaded images
-    uploadedImages = uploadedImages.filter(img => img.filename !== imageId);
+function removeFileFromCurrentLocation(fileId) {
+    //remove from uploaded files
+    uploadedFiles = uploadedFiles.filter(file => file.filename !== fileId);
     //remove from all tiers
     tierData.forEach(tier => {
-        tier.images = tier.images.filter(img => img.filename !== imageId);
+        tier.files = tier.files.filter(file => file.filename !== fileId);
     });
 }
 
@@ -324,21 +356,102 @@ function saveTierList() {
         timestamp: new Date().toISOString(),
         tiers: tierData.map(tier => ({
             label: tier.label,
-            images: tier.images.map(img => ({
-                filename: img.filename,
-                original_name: img.original_name
+            files: tier.files.map(file => ({
+                filename: file.filename,
+                original_name: file.original_name,
+                is_audio: file.is_audio
             }))
         }))
     };
-
     const dataStr = JSON.stringify(tierListData, null, 2);
     const dataBlob = new Blob([dataStr], {type: 'application/json'});
     const link = document.createElement('a');
     link.href = URL.createObjectURL(dataBlob);
     link.download = `tierlist-${new Date().toISOString().slice(0, 10)}.json`;
     link.click();
-    
     showNotification('Tier list saved successfully!', 'success');
+}
+
+// import functionality
+function handleImportFile(e) {
+    const file = e.target.files[0];
+    if (!file) return;
+    
+    const formData = new FormData();
+    formData.append('file', file);
+    
+    showNotification('Importing tier list...', 'info');
+    
+    fetch('/import', {
+        method: 'POST',
+        body: formData
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.error) {
+            showNotification(data.error, 'error');
+        } else {
+            importTierList(data);
+        }
+    })
+    .catch(error => {
+        console.error('Import error:', error);
+        showNotification('Import failed. Please try again.', 'error');
+    })
+    .finally(() => {
+        //clear the file input
+        e.target.value = '';
+    });
+}
+
+function importTierList(data) {
+    const { tierlist, available_files, missing_files } = data;
+    
+    //show warning for missing files
+    if (missing_files.length > 0) {
+        const missingList = missing_files.join(', ');
+        showNotification(`Warning: ${missing_files.length} file(s) not found: ${missingList}`, 'warning');
+    }
+    
+    //clear current state
+    uploadedFiles = [];
+    tierData = [];
+    
+    //add available files to uploaded files
+    uploadedFiles = [...available_files];
+    
+    //reconstruct tier data
+    tierlist.tiers.forEach((tier, index) => {
+        const tierFiles = [];
+        
+        //support both new 'files' format and legacy 'images' format
+        const mediaItems = tier.files || tier.images || [];
+        mediaItems.forEach(fileData => {
+            const availableFile = available_files.find(f => f.filename === fileData.filename);
+            if (availableFile) {
+                tierFiles.push(availableFile);
+            }
+        });
+        
+        tierData.push({
+            id: `tier-${index}`,
+            label: tier.label || DEFAULT_TIER_LABELS[index] || `T${index + 1}`,
+            files: tierFiles
+        });
+    });
+    
+    //update UI
+    const tierCount = tierData.length;
+    document.getElementById('tier-slider').value = tierCount;
+    document.getElementById('tier-count-display').textContent = tierCount;
+    
+    displayUploadedFiles();
+    renderTiers();
+    
+    const successMsg = missing_files.length > 0 
+        ? `Tier list imported with ${missing_files.length} missing file(s)`
+        : 'Tier list imported successfully!';
+    showNotification(successMsg, 'success');
 }
 // notification system
 function showNotification(message, type = 'info') {
@@ -354,7 +467,6 @@ function showNotification(message, type = 'info') {
             <button onclick="this.parentElement.parentElement.remove()" class="btn btn-ghost btn-xs">✕</button>
         </div>
     `;
-    
     document.body.appendChild(toast);
     
     //auto remove after 5 seconds
@@ -364,3 +476,74 @@ function showNotification(message, type = 'info') {
         }
     }, 5000);
 } 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+

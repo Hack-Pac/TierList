@@ -32,14 +32,14 @@
         <!-- file upload section -->
         <div class="card bg-base-200 shadow-xl">
             <div class="card-body">
-                <h2 class="card-title text-xl mb-4">📁 Upload Images</h2>
+                <h2 class="card-title text-xl mb-4">📁 Upload Media</h2>
                 <div id="upload-zone" class="upload-zone border-2 border-dashed border-base-300 rounded-lg p-8 text-center">
-                    <input type="file" id="file-input" multiple accept=".png,.jpg,.jpeg,.gif" class="hidden">
+                    <input type="file" id="file-input" multiple accept=".png,.jpg,.jpeg,.gif,.mp3,.wav,.ogg,.m4a,.aac" class="hidden">
                     <div class="space-y-4">
                         <div class="text-4xl">📂</div>
                         <div>
-                            <p class="text-lg font-medium">Drop images here or click to browse</p>
-                            <p class="text-sm text-base-content/70">Supports PNG, JPG, GIF up to 5MB each</p>
+                            <p class="text-lg font-medium">Drop media files here or click to browse</p>
+                            <p class="text-sm text-base-content/70">Supports PNG, JPG, GIF, MP3, WAV, OGG, M4A, AAC up to 5MB each</p>
                         </div>
                         <button id="browse-btn" class="btn btn-primary">Browse Files</button>
                     </div>
@@ -67,7 +67,11 @@
                             <span>8</span>
                         </div>
                     </div>
-                    <button id="save-btn" class="btn btn-secondary">💾 Save Tier List</button>
+                    <div class="flex gap-2">
+                        <button id="import-btn" class="btn btn-accent">📂 Import Tier List</button>
+                        <button id="save-btn" class="btn btn-secondary">💾 Save Tier List</button>
+                    </div>
+                    <input type="file" id="import-input" accept=".json" class="hidden">
                 </div>
             </div>
         </div>
@@ -79,3 +83,29 @@
     <script src="{{ url_for('static', filename='js/app.js') }}"></script>
 </body>
 </html> 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+

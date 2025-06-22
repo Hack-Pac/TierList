@@ -19,10 +19,25 @@
 .tier-item.dragging {
   @apply opacity-50 scale-95;
 }
-
 .upload-zone {
   transition: all 0.3s ease;
 }
 .upload-zone.drag-over {
   @apply border-primary bg-primary/10;
 } 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+

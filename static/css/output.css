@@ -168,14 +168,12 @@ html,
 1. Remove the margin in all browsers.
 2. Inherit line-height from `html` so users can set them as a class directly on the `html` element.
 */
-
 body {
   margin: 0;
   /* 1 */
   line-height: inherit;
   /* 2 */
 }
-
 /*
 1. Add the correct height in Firefox.
 2. Correct the inheritance of border color in Firefox. (https://bugzilla.mozilla.org/show_bug.cgi?id=190655)
@@ -753,7 +751,6 @@ html {
   --b3: 21.1484% 0.01165 254.087939;
   --bc: 74.6477% 0.0216 264.435964;
 }
-
 [data-theme=light] {
   color-scheme: light;
   --in: 72.06% 0.191 231.6;
@@ -802,7 +799,6 @@ html {
     max-width: 768px;
   }
 }
-
 @media (min-width: 1024px) {
   .container {
     max-width: 1024px;
@@ -1049,7 +1045,6 @@ html {
 .dropdown-end .dropdown-content {
   inset-inline-end: 0px;
 }
-
 .dropdown-left .dropdown-content {
   bottom: auto;
   inset-inline-end: 100%;
@@ -1085,7 +1080,6 @@ html {
   bottom: 0px;
   top: auto;
 }
-
 .dropdown.dropdown-open .dropdown-content,
 .dropdown:not(.dropdown-hover):focus .dropdown-content,
 .dropdown:focus-within .dropdown-content {
@@ -1330,7 +1324,6 @@ html {
   border-end-start-radius: 0;
   border-start-start-radius: 0;
 }
-
 .join .join-item:first-child:not(:last-child),
   .join *:first-child:not(:last-child) .join-item {
   border-start-end-radius: 0;
@@ -1527,7 +1520,6 @@ html {
   --tw-text-opacity: 1;
   color: var(--fallback-p,oklch(var(--p)/var(--tw-text-opacity)));
 }
-
 .btm-nav > * .label {
   font-size: 1rem;
   line-height: 1.5rem;
@@ -1764,7 +1756,6 @@ html {
   0% {
     background-position-y: 5px;
   }
-
   50% {
     background-position-y: -2px;
   }
@@ -1837,7 +1828,6 @@ html {
   background-color: var(--fallback-p,oklch(var(--p)/var(--tw-bg-opacity)));
   background-color: transparent;
 }
-
 .input input:focus {
   outline: 2px solid transparent;
   outline-offset: 2px;
@@ -1998,7 +1988,6 @@ html {
   box-shadow: 2px 2px;
   pointer-events: none;
 }
-
 .menu :where(li > details[open] > summary):after,
 .menu :where(li > .menu-dropdown-toggle.menu-dropdown-show):after {
   transform: rotate(225deg);
@@ -2443,7 +2432,6 @@ html {
 .card-compact .card-title {
   margin-bottom: 0.25rem;
 }
-
 .card-normal .card-body {
   padding: var(--padding-card, 2rem);
   font-size: 1rem;
@@ -2520,7 +2508,6 @@ html {
 .static {
   position: static;
 }
-
 .fixed {
   position: fixed;
 }
@@ -2907,3 +2894,29 @@ html {
     grid-template-columns: repeat(6, minmax(0, 1fr));
   }
 } 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
