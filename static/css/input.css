@@ -24,7 +24,12 @@
 }
 .upload-zone.drag-over {
   @apply border-primary bg-primary/10;
-} 
+}
+
+/* upload preview area drag-over state for returning items */
+#upload-preview.drag-over-upload {
+  @apply border-2 border-dashed border-accent bg-accent/10 rounded-lg;
+}
 
 
 

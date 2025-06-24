@@ -35,25 +35,67 @@ function setupFileUpload() {
     uploadZone.addEventListener('click', () => fileInput.click());
     //file input change handler
     fileInput.addEventListener('change', handleFileSelect);
-    //drag and drop for upload zone
-    uploadZone.addEventListener('dragover', handleDragOver);
-    uploadZone.addEventListener('dragleave', handleDragLeave);
-    uploadZone.addEventListener('drop', handleFileDrop);
+    //drag and drop for upload zone (both file uploads and returning items from tiers)
+    uploadZone.addEventListener('dragover', handleUploadZoneDragOver);
+    uploadZone.addEventListener('dragleave', handleUploadZoneDragLeave);
+    uploadZone.addEventListener('drop', handleUploadZoneDrop);
 }
-function handleDragOver(e) {
+function handleUploadZoneDragOver(e) {
     e.preventDefault();
     e.currentTarget.classList.add('drag-over');
 }
-function handleDragLeave(e) {
+
+function handleUploadZoneDragLeave(e) {
     e.preventDefault();
     e.currentTarget.classList.remove('drag-over');
 }
-function handleFileDrop(e) {
+
+function handleUploadZoneDrop(e) {
     e.preventDefault();
     e.currentTarget.classList.remove('drag-over');
+    
+    // Check if this is a file being dragged from a tier (has draggedElement)
+    if (draggedElement) {
+        const fileId = draggedElement.dataset.fileId;
+        const file = findFileById(fileId);
+        if (file) {
+            // Remove file from its current location (tier)
+            removeFileFromCurrentLocation(fileId);
+            
+            // Add back to uploaded files if not already there
+            if (!uploadedFiles.find(f => f.filename === fileId)) {
+                uploadedFiles.push(file);
+            }
+            
+            // Refresh displays
+            displayUploadedFiles();
+            renderTiers();
+            
+            showNotification('Item returned to upload area', 'success');
+            return;
+        }
+    }
+    
+    // Otherwise, handle as regular file upload
     const files = e.dataTransfer.files;
-    uploadFiles(files);
+    if (files.length > 0) {
+        uploadFiles(files);
+    }
 }
+
+// Keep the old function names for backward compatibility
+function handleDragOver(e) {
+    return handleUploadZoneDragOver(e);
+}
+
+function handleDragLeave(e) {
+    return handleUploadZoneDragLeave(e);
+}
+
+function handleFileDrop(e) {
+    return handleUploadZoneDrop(e);
+}
+
 function handleFileSelect(e) {
     const files = e.target.files;
     uploadFiles(files);
@@ -120,6 +162,7 @@ function displayUploadedFiles() {
     }
 
     preview.classList.remove('hidden');
+    
     uploadedFiles.forEach(file => {
         const fileElement = createDraggableFile(file);
         preview.appendChild(fileElement);
@@ -273,6 +316,12 @@ function createTierFileHTML(file) {
                         <source src="${file.url}" type="audio/mpeg">
                     </audio>
                 </div>
+                <!-- Delete button -->
+                <div class="absolute -top-1 -right-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                    <button onclick="removeFile('${file.filename}')" 
+                            class="btn btn-xs btn-circle btn-error" 
+                            title="Delete file">✕</button>
+                </div>
             </div>
         `;
     } else {
@@ -284,6 +333,12 @@ function createTierFileHTML(file) {
                  onmouseup="handleFileDragEnd(event)">
                 <img src="${file.url}" alt="${file.original_name}" 
                      class="w-16 h-16 object-cover rounded border border-base-300">
+                <!-- Delete button -->
+                <div class="absolute -top-1 -right-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                    <button onclick="removeFile('${file.filename}')" 
+                            class="btn btn-xs btn-circle btn-error" 
+                            title="Delete file">✕</button>
+                </div>
             </div>
         `;
     }
@@ -475,7 +530,7 @@ function showNotification(message, type = 'info') {
             toast.remove();
         }
     }, 5000);
-} 
+}
 
 
 
