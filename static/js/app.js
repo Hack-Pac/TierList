@@ -2,6 +2,30 @@
 let tierData = [];
 let uploadedFiles = [];
 let draggedElement = null;
+
+// Voice control state
+let isVoiceControlActive = false;
+let recognition = null;
+let voiceControlButton = null;
+let isProcessingVoiceCommand = false;
+let currentBrowser = null;
+let speechKittReady = false;
+
+// Browser detection
+function detectBrowser() {
+    const userAgent = navigator.userAgent.toLowerCase();
+    if (userAgent.indexOf('firefox') > -1) {
+        return 'firefox';
+    } else if (userAgent.indexOf('chrome') > -1) {
+        return 'chrome';
+    } else if (userAgent.indexOf('safari') > -1) {
+        return 'safari';
+    } else if (userAgent.indexOf('edge') > -1) {
+        return 'edge';
+    }
+    return 'other';
+}
+
 // default tier labels
 const DEFAULT_TIER_LABELS = ['S', 'A', 'B', 'C', 'D', 'F', 'G', 'H'];
 // initialize app when DOM loads
@@ -13,6 +37,7 @@ function initializeApp() {
     setupTierControls();
     generateDefaultTiers();
     setupThemeToggle();
+    setupVoiceControl();
 }
 // theme management
 function setTheme(theme) {
@@ -531,6 +556,755 @@ function showNotification(message, type = 'info') {
         }
     }, 5000);
 }
+
+// Voice Control System (Enhanced with Firefox support)
+function setupVoiceControl() {
+    currentBrowser = detectBrowser();
+    console.log('Detected browser:', currentBrowser);
+    
+    // Initialize SpeechKITT if available for better UI
+    if (typeof SpeechKITT !== 'undefined') {
+        SpeechKITT.annyang();
+        SpeechKITT.setStylesheet('//cdnjs.cloudflare.com/ajax/libs/SpeechKITT/1.0.0/themes/flat.css');
+        speechKittReady = true;
+    }
+    
+    // Firefox-specific setup
+    if (currentBrowser === 'firefox') {
+        setupFirefoxVoiceControl();
+    }
+    // Try Annyang.js first (if available), then fall back to native Web Speech API
+    else if (typeof annyang !== 'undefined') {
+        setupAnnyangVoiceControl();
+    } else if ('webkitSpeechRecognition' in window || 'SpeechRecognition' in window) {
+        setupNativeVoiceControl();
+    } else {
+        console.warn('Speech recognition not supported in this browser');
+        showFirefoxInstructions();
+        return;
+    }
+}
+
+function setupFirefoxVoiceControl() {
+    console.log('Setting up Firefox-specific voice recognition');
+    
+    // Check if Firefox has speech recognition enabled
+    if ('SpeechRecognition' in window || 'webkitSpeechRecognition' in window) {
+        // Firefox has experimental support, use native API
+        setupNativeVoiceControlWithFirefoxTweaks();
+    } else {
+        // Firefox doesn't have speech recognition, offer alternatives
+        setupFirefoxFallback();
+    }
+}
+
+function setupNativeVoiceControlWithFirefoxTweaks() {
+    console.log('Using native Web Speech API with Firefox optimizations');
+    
+    const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+    if (!SpeechRecognition) {
+        setupFirefoxFallback();
+        return;
+    }
+    
+    recognition = new SpeechRecognition();
+    
+    // Firefox-specific settings
+    recognition.continuous = false; // Firefox works better with non-continuous mode
+    recognition.interimResults = true; // Get interim results for better responsiveness
+    recognition.lang = 'en-US';
+    recognition.maxAlternatives = 5; // More alternatives for Firefox
+    
+    // Firefox-optimized event handlers
+    recognition.onstart = () => {
+        console.log('Firefox voice recognition started');
+        updateVoiceControlUI(true);
+        showNotification('Firefox voice recognition active - speak clearly!', 'info');
+    };
+    
+    recognition.onend = () => {
+        console.log('Firefox voice recognition ended');
+        if (isVoiceControlActive) {
+            // Auto-restart for Firefox with delay
+            setTimeout(() => {
+                if (isVoiceControlActive) {
+                    try {
+                        recognition.start();
+                    } catch (e) {
+                        console.log('Firefox restart delayed');
+                        setTimeout(() => {
+                            if (isVoiceControlActive) recognition.start();
+                        }, 1000);
+                    }
+                }
+            }, 500);
+        } else {
+            updateVoiceControlUI(false);
+        }
+    };
+    
+    recognition.onerror = (event) => {
+        console.error('Firefox speech recognition error:', event.error);
+        
+        if (event.error === 'not-allowed') {
+            showNotification('Microphone access denied. Please enable microphone permissions in Firefox.', 'error');
+            showFirefoxPermissionInstructions();
+        } else {
+            showNotification(`Firefox voice error: ${event.error}`, 'warning');
+            // Auto-retry for Firefox
+            setTimeout(() => {
+                if (isVoiceControlActive) {
+                    recognition.start();
+                }
+            }, 2000);
+        }
+    };
+    
+    recognition.onresult = (event) => {
+        // Handle both interim and final results for Firefox
+        for (let i = event.resultIndex; i < event.results.length; i++) {
+            const result = event.results[i];
+            
+            if (result.isFinal) {
+                // Process final result
+                const transcript = result[0].transcript.toLowerCase().trim();
+                const confidence = result[0].confidence;
+                console.log(`Firefox final transcript: "${transcript}" (confidence: ${confidence})`);
+                
+                if (confidence > 0.5 || currentBrowser === 'firefox') { // Lower threshold for Firefox
+                    processVoiceCommand(transcript);
+                }
+            } else if (result[0].confidence > 0.8) {
+                // Show interim results for immediate feedback
+                const interimTranscript = result[0].transcript.toLowerCase().trim();
+                console.log(`Firefox interim: "${interimTranscript}"`);
+                showNotification(`Hearing: "${interimTranscript}"`, 'info');
+            }
+        }
+    };
+}
+
+function setupFirefoxFallback() {
+    console.log('Setting up Firefox fallback options');
+    
+    // Create a text input fallback for Firefox users
+    const fallbackContainer = document.createElement('div');
+    fallbackContainer.id = 'firefox-voice-fallback';
+    fallbackContainer.className = 'fixed bottom-4 right-4 z-50 bg-base-200 p-4 rounded-lg shadow-xl max-w-sm';
+    fallbackContainer.innerHTML = `
+        <div class="text-sm font-medium mb-2">🦊 Firefox Voice Input</div>
+        <div class="flex gap-2">
+            <input type="text" id="firefox-voice-input" placeholder="Type: Move item to S tier" 
+                   class="input input-sm input-primary flex-1">
+            <button onclick="processFirefoxTextCommand()" class="btn btn-sm btn-primary">▶</button>
+        </div>
+        <div class="text-xs text-base-content/70 mt-1">
+            Type voice commands or <a href="#" onclick="showFirefoxInstructions()" class="link">enable speech</a>
+        </div>
+    `;
+    
+    document.body.appendChild(fallbackContainer);
+    
+    // Add enter key support
+    const input = document.getElementById('firefox-voice-input');
+    input.addEventListener('keypress', (e) => {
+        if (e.key === 'Enter') {
+            processFirefoxTextCommand();
+        }
+    });
+    
+    // Update the voice control button for Firefox
+    recognition = { firefoxFallback: true };
+}
+
+// Global functions for Firefox fallback (accessible from HTML)
+window.processFirefoxTextCommand = processFirefoxTextCommand;
+window.showFirefoxInstructions = showFirefoxInstructions;
+
+function processFirefoxTextCommand() {
+    const input = document.getElementById('firefox-voice-input');
+    const command = input.value.trim();
+    
+    if (command) {
+        console.log('Firefox text command:', command);
+        processVoiceCommand(command);
+        input.value = '';
+    }
+}
+
+function showFirefoxInstructions() {
+    const instructions = `
+    🦊 Firefox Voice Recognition Setup:
+    
+    1. Type "about:config" in Firefox address bar
+    2. Search for "media.webspeech.recognition"
+    3. Set "media.webspeech.recognition.enable" to true
+    4. Set "media.webspeech.recognition.force_enable" to true
+    5. Restart Firefox
+    6. Grant microphone permissions when prompted
+    
+    Alternative: Use the text input box for voice commands!
+    `;
+    
+    showNotification(instructions, 'info');
+    
+    // Also show in console for easy copying
+    console.log('Firefox Setup Instructions:', instructions);
+}
+
+function showFirefoxPermissionInstructions() {
+    const instructions = `
+    🎤 Firefox Microphone Permissions:
+    
+    1. Click the microphone icon in the address bar
+    2. Select "Allow" for microphone access
+    3. Or go to Firefox Settings > Privacy & Security > Permissions
+    4. Find "Microphone" and allow this site
+    
+    Then click the voice control button again!
+    `;
+    
+    showNotification(instructions, 'warning');
+}
+
+function setupAnnyangVoiceControl() {
+    console.log('Using Annyang.js for voice recognition');
+    
+    // Dynamic command generation based on current state
+    function updateAnnyangCommands() {
+        const commands = {};
+        
+        // Get current tier labels and file names
+        const tierLabels = tierData.map(t => t.label.toLowerCase());
+        const allFiles = [...uploadedFiles, ...tierData.flatMap(t => t.files)];
+        
+        // Create dynamic patterns for each tier
+        tierLabels.forEach(tier => {
+            // Multiple patterns for natural language
+            commands[`move * to ${tier} tier`] = (item) => processVoiceMove(item, tier);
+            commands[`put * in ${tier} tier`] = (item) => processVoiceMove(item, tier);
+            commands[`move * into ${tier} tier`] = (item) => processVoiceMove(item, tier);
+            commands[`* goes to ${tier} tier`] = (item) => processVoiceMove(item, tier);
+            commands[`* should go to ${tier} tier`] = (item) => processVoiceMove(item, tier);
+        });
+        
+        // Add general patterns that will use AI parsing
+        commands['move * to * tier'] = (item, tier) => processVoiceMove(item, tier);
+        commands['put * in * tier'] = (item, tier) => processVoiceMove(item, tier);
+        commands['* goes to * tier'] = (item, tier) => processVoiceMove(item, tier);
+        
+        annyang.removeCommands();
+        annyang.addCommands(commands);
+    }
+    
+    // Set up Annyang callbacks
+    annyang.addCallback('start', () => {
+        console.log('Annyang voice recognition started');
+        updateVoiceControlUI(true);
+        updateAnnyangCommands(); // Update commands with current state
+    });
+    
+    annyang.addCallback('end', () => {
+        console.log('Annyang voice recognition ended');
+        if (isVoiceControlActive) {
+            setTimeout(() => {
+                if (isVoiceControlActive) {
+                    annyang.start();
+                }
+            }, 100);
+        } else {
+            updateVoiceControlUI(false);
+        }
+    });
+    
+    annyang.addCallback('error', (error) => {
+        console.error('Annyang error:', error);
+        showNotification(`Voice recognition error: ${error.error || 'Unknown error'}`, 'error');
+    });
+    
+    annyang.addCallback('resultMatch', (userSaid, commandText, phrases) => {
+        console.log('Voice command matched:', userSaid);
+        showNotification(`Command recognized: "${userSaid}"`, 'info');
+    });
+    
+    annyang.addCallback('resultNoMatch', (phrases) => {
+        console.log('No command match for:', phrases);
+        // Fall back to AI parsing for unmatched phrases
+        if (phrases && phrases.length > 0) {
+            processVoiceCommand(phrases[0]);
+        }
+    });
+    
+    // Configure Annyang
+    annyang.setLanguage('en-US');
+    recognition = annyang; // Store reference for toggle function
+}
+
+function setupNativeVoiceControl() {
+    console.log('Using native Web Speech API');
+    
+    // Check if browser supports speech recognition
+    if (!('webkitSpeechRecognition' in window) && !('SpeechRecognition' in window)) {
+        console.warn('Speech recognition not supported in this browser');
+        return;
+    }
+
+    // Initialize speech recognition
+    const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+    recognition = new SpeechRecognition();
+    
+    recognition.continuous = true;
+    recognition.interimResults = false;
+    recognition.lang = 'en-US';
+    recognition.maxAlternatives = 3; // Get multiple alternatives for better accuracy
+    
+    // Set up recognition events
+    recognition.onstart = () => {
+        console.log('Native voice recognition started');
+        updateVoiceControlUI(true);
+    };
+    
+    recognition.onend = () => {
+        console.log('Native voice recognition ended');
+        if (isVoiceControlActive) {
+            // Restart recognition if it's supposed to be active
+            setTimeout(() => {
+                if (isVoiceControlActive) {
+                    recognition.start();
+                }
+            }, 100);
+        } else {
+            updateVoiceControlUI(false);
+        }
+    };
+    
+    recognition.onerror = (event) => {
+        console.error('Speech recognition error:', event.error);
+        showNotification(`Voice recognition error: ${event.error}`, 'error');
+        
+        // Auto-retry for certain errors
+        if (event.error === 'network' || event.error === 'audio-capture') {
+            setTimeout(() => {
+                if (isVoiceControlActive) {
+                    recognition.start();
+                }
+            }, 2000);
+        }
+    };
+    
+    recognition.onresult = (event) => {
+        const result = event.results[event.results.length - 1];
+        if (result.isFinal) {
+            // Try the most confident result first, then alternatives
+            for (let i = 0; i < result.length; i++) {
+                const transcript = result[i].transcript.toLowerCase().trim();
+                const confidence = result[i].confidence;
+                console.log(`Voice transcript ${i+1}: "${transcript}" (confidence: ${confidence})`);
+                
+                if (i === 0 || confidence > 0.7) { // Use first result or high-confidence alternatives
+                    processVoiceCommand(transcript);
+                    break;
+                }
+            }
+        }
+    };
+}
+
+function processVoiceMove(item, tier) {
+    // Direct processing for Annyang-matched commands
+    if (!isProcessingVoiceCommand) {
+        isProcessingVoiceCommand = true;
+        
+        const allFiles = [...uploadedFiles, ...tierData.flatMap(t => t.files)];
+        const file = findFileByName(allFiles, item);
+        
+        if (!file) {
+            showNotification(`Could not find file: ${item}`, 'error');
+            isProcessingVoiceCommand = false;
+            return;
+        }
+
+        const targetTierIndex = tierData.findIndex(t => 
+            t.label.toLowerCase() === tier.toLowerCase()
+        );
+        
+        if (targetTierIndex === -1) {
+            showNotification(`Could not find tier: ${tier}`, 'error');
+            isProcessingVoiceCommand = false;
+            return;
+        }
+
+        moveItemToTier(file.filename, targetTierIndex);
+        showNotification(`Moved "${file.original_name}" to ${tier.toUpperCase()} tier`, 'success');
+        isProcessingVoiceCommand = false;
+    }
+}
+
+function toggleVoiceControl() {
+    if (!recognition) {
+        showNotification('Voice recognition not supported in this browser', 'error');
+        if (currentBrowser === 'firefox') {
+            showFirefoxInstructions();
+        }
+        return;
+    }
+
+    isVoiceControlActive = !isVoiceControlActive;
+    
+    if (isVoiceControlActive) {
+        try {
+            if (recognition.firefoxFallback) {
+                // Firefox fallback mode
+                const fallback = document.getElementById('firefox-voice-fallback');
+                if (fallback) {
+                    fallback.style.display = 'block';
+                    const input = document.getElementById('firefox-voice-input');
+                    if (input) input.focus();
+                }
+                showNotification('🦊 Firefox text input mode activated!', 'success');
+            } else if (typeof annyang !== 'undefined' && recognition === annyang) {
+                // Using Annyang.js
+                annyang.start();
+                if (speechKittReady) SpeechKITT.show();
+                showNotification('Enhanced voice control activated! Try: "Move cat photo to S tier"', 'success');
+            } else {
+                // Using native Web Speech API
+                recognition.start();
+                showNotification(`${currentBrowser === 'firefox' ? '🦊 Firefox' : ''} Voice control activated! Say: "Move [item] to [tier] tier"`, 'success');
+            }
+        } catch (error) {
+            console.error('Failed to start voice recognition:', error);
+            isVoiceControlActive = false;
+            
+            if (currentBrowser === 'firefox') {
+                showNotification('Firefox voice failed. Try enabling speech recognition in about:config', 'error');
+                showFirefoxInstructions();
+            } else {
+                showNotification('Failed to start voice control', 'error');
+            }
+        }
+    } else {
+        try {
+            if (recognition.firefoxFallback) {
+                // Firefox fallback mode
+                const fallback = document.getElementById('firefox-voice-fallback');
+                if (fallback) fallback.style.display = 'none';
+                showNotification('Firefox text input mode deactivated', 'info');
+            } else if (typeof annyang !== 'undefined' && recognition === annyang) {
+                annyang.abort();
+                if (speechKittReady) SpeechKITT.hide();
+            } else {
+                recognition.stop();
+            }
+            showNotification('Voice control deactivated', 'info');
+        } catch (error) {
+            console.error('Failed to stop voice recognition:', error);
+        }
+    }
+    
+    updateVoiceControlUI(isVoiceControlActive);
+}
+
+function updateVoiceControlUI(isActive) {
+    voiceControlButton = voiceControlButton || document.getElementById('voice-control-btn');
+    if (voiceControlButton) {
+        if (isActive) {
+            voiceControlButton.classList.add('btn-success');
+            voiceControlButton.classList.remove('btn-accent');
+            
+            // Show which system is being used
+            let systemType = 'Standard';
+            if (recognition && recognition.firefoxFallback) {
+                systemType = '🦊 Text Input';
+            } else if (typeof annyang !== 'undefined' && recognition === annyang) {
+                systemType = 'Enhanced';
+            } else if (currentBrowser === 'firefox') {
+                systemType = '🦊 Firefox';
+            }
+            voiceControlButton.innerHTML = `🎤 ${systemType} Active`;
+        } else {
+            voiceControlButton.classList.remove('btn-success');
+            voiceControlButton.classList.add('btn-accent');
+            
+            // Show available system type
+            let systemType = 'Voice Control';
+            if (recognition && recognition.firefoxFallback) {
+                systemType = '🦊 Text Input';
+            } else if (typeof annyang !== 'undefined') {
+                systemType = 'Enhanced Voice';
+            } else if (currentBrowser === 'firefox') {
+                systemType = '🦊 Firefox Voice';
+            }
+            voiceControlButton.innerHTML = `🎤 ${systemType}`;
+        }
+    }
+}
+
+async function processVoiceCommand(transcript) {
+    if (isProcessingVoiceCommand) {
+        console.log('Already processing a command, skipping...');
+        return;
+    }
+
+    isProcessingVoiceCommand = true;
+    showNotification('Processing voice command...', 'info');
+
+    try {
+        // Use AI to parse the voice command
+        const command = await parseVoiceCommandWithAI(transcript);
+        
+        if (command) {
+            await executeVoiceCommand(command);
+        } else {
+            showNotification('Could not understand voice command', 'warning');
+        }
+    } catch (error) {
+        console.error('Error processing voice command:', error);
+        showNotification('Error processing voice command', 'error');
+    } finally {
+        isProcessingVoiceCommand = false;
+    }
+}
+
+async function parseVoiceCommandWithAI(transcript) {
+    const MAX_RETRIES = 2;
+    
+    for (let attempt = 1; attempt <= MAX_RETRIES; attempt++) {
+        try {
+            // Get current tier labels and uploaded files for context
+            const tierLabels = tierData.map(t => t.label);
+            const allFiles = [...uploadedFiles, ...tierData.flatMap(t => t.files)];
+            const allFileNames = allFiles.map(f => f.original_name);
+
+            const prompt = `You are a voice command parser for a tier list application. Parse the following voice command and extract the action, item name, and target tier.
+
+Available tier labels: ${tierLabels.join(', ')}
+Available files: ${allFileNames.join(', ')}
+
+Voice command: "${transcript}"
+
+Please respond with a JSON object in this exact format:
+{
+  "action": "move", 
+  "itemName": "exact file name from available files",
+  "targetTier": "exact tier label from available tiers"
+}
+
+Only respond if the command is clearly asking to move an item to a tier. Common patterns:
+- "Move [item] to [tier] tier"
+- "Put [item] in [tier] tier" 
+- "Let's move [item] into [tier] tier"
+- "[item] should go to [tier] tier"
+
+For fuzzy matching:
+- If the user says "cat", match files like "cat_photo.jpg" or "cute_cat.png"
+- If the user says "song", match files like "my_song.mp3" or "favorite_song.wav"
+
+If the command is not clear or doesn't match these patterns, respond with: {"action": "unknown"}`;
+
+            const controller = new AbortController();
+            const timeoutId = setTimeout(() => controller.abort(), 10000); // 10 second timeout
+
+            const response = await fetch('https://ai.hackclub.com/chat/completions', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                    messages: [
+                        {
+                            role: 'user',
+                            content: prompt
+                        }
+                    ],
+                    max_tokens: 150,
+                    temperature: 0.1 // Lower temperature for more consistent parsing
+                }),
+                signal: controller.signal
+            });
+
+            clearTimeout(timeoutId);
+
+            if (!response.ok) {
+                throw new Error(`AI API request failed: ${response.status} ${response.statusText}`);
+            }
+
+            const data = await response.json();
+            
+            if (!data.choices || !data.choices[0] || !data.choices[0].message) {
+                throw new Error('Invalid response format from AI API');
+            }
+            
+            const aiResponse = data.choices[0].message.content.trim();
+            
+            // Clean up response (remove any markdown formatting)
+            const cleanResponse = aiResponse.replace(/```json\n?|\n?```/g, '').trim();
+            
+            // Parse the JSON response
+            const command = JSON.parse(cleanResponse);
+            
+            console.log(`AI parsed command (attempt ${attempt}):`, command);
+            
+            if (command.action === 'unknown') {
+                return null;
+            }
+            
+            // Validate the response structure
+            if (!command.action || !command.itemName || !command.targetTier) {
+                throw new Error('Invalid command structure returned by AI');
+            }
+            
+            return command;
+            
+        } catch (error) {
+            console.error(`Error parsing voice command with AI (attempt ${attempt}):`, error);
+            
+            if (attempt === MAX_RETRIES) {
+                // Last attempt failed, try simple pattern matching as fallback
+                return parseVoiceCommandSimple(transcript);
+            }
+            
+            // Wait before retry
+            await new Promise(resolve => setTimeout(resolve, 1000));
+        }
+    }
+    
+    return null;
+}
+
+function parseVoiceCommandSimple(transcript) {
+    // Simple fallback pattern matching
+    const tierLabels = tierData.map(t => t.label.toLowerCase());
+    const allFiles = [...uploadedFiles, ...tierData.flatMap(t => t.files)];
+    
+    // Try to find patterns like "move X to Y tier"
+    const patterns = [
+        /move (.+) to ([a-z]+) tier/i,
+        /put (.+) in ([a-z]+) tier/i,
+        /(.+) goes? to ([a-z]+) tier/i,
+        /(.+) should go to ([a-z]+) tier/i
+    ];
+    
+    for (const pattern of patterns) {
+        const match = transcript.match(pattern);
+        if (match) {
+            const itemName = match[1].trim();
+            const tierName = match[2].trim().toLowerCase();
+            
+            // Check if tier exists
+            if (tierLabels.includes(tierName)) {
+                // Try to find the file
+                const file = findFileByName(allFiles, itemName);
+                if (file) {
+                    return {
+                        action: 'move',
+                        itemName: file.original_name,
+                        targetTier: tierName.toUpperCase()
+                    };
+                }
+            }
+        }
+    }
+    
+    return null;
+}
+
+async function executeVoiceCommand(command) {
+    const { action, itemName, targetTier } = command;
+    
+    if (action !== 'move') {
+        showNotification('Only move commands are supported', 'warning');
+        return;
+    }
+
+    // Find the file by name (fuzzy matching)
+    const allFiles = [...uploadedFiles, ...tierData.flatMap(t => t.files)];
+    const file = findFileByName(allFiles, itemName);
+    
+    if (!file) {
+        showNotification(`Could not find file: ${itemName}`, 'error');
+        return;
+    }
+
+    // Find the target tier
+    const targetTierIndex = tierData.findIndex(tier => 
+        tier.label.toLowerCase() === targetTier.toLowerCase()
+    );
+    
+    if (targetTierIndex === -1) {
+        showNotification(`Could not find tier: ${targetTier}`, 'error');
+        return;
+    }
+
+    // Execute the move
+    moveItemToTier(file.filename, targetTierIndex);
+    
+    showNotification(`Moved "${file.original_name}" to ${targetTier} tier`, 'success');
+}
+
+function findFileByName(files, searchName) {
+    searchName = searchName.toLowerCase();
+    
+    // First try exact match
+    let match = files.find(f => f.original_name.toLowerCase() === searchName);
+    if (match) return match;
+    
+    // Then try partial match
+    match = files.find(f => f.original_name.toLowerCase().includes(searchName));
+    if (match) return match;
+    
+    // Finally try fuzzy matching (check if search name is contained in file name)
+    match = files.find(f => {
+        const fileName = f.original_name.toLowerCase();
+        const words = searchName.split(' ');
+        return words.every(word => fileName.includes(word));
+    });
+    
+    return match;
+}
+
+function moveItemToTier(fileId, targetTierIndex) {
+    const file = findFileById(fileId);
+    if (!file) return;
+    
+    // Remove from current location
+    removeFileFromCurrentLocation(fileId);
+    
+    // Add to target tier
+    tierData[targetTierIndex].files.push(file);
+    
+    // Refresh displays
+    displayUploadedFiles();
+    renderTiers();
+}
+
+// Text command input functions (available for all users)
+function handleVoiceInputKeypress(event) {
+    if (event.key === 'Enter') {
+        processTextCommand();
+    }
+}
+
+function processTextCommand() {
+    const input = document.getElementById('voice-command-input');
+    const command = input.value.trim();
+    
+    if (command) {
+        console.log('Text command entered:', command);
+        showNotification('Processing text command...', 'info');
+        processVoiceCommand(command);
+        input.value = '';
+    } else {
+        showNotification('Please enter a command', 'warning');
+        input.focus();
+    }
+}
+
+// Global functions accessible from HTML
+window.handleVoiceInputKeypress = handleVoiceInputKeypress;
+window.processTextCommand = processTextCommand;
+window.processFirefoxTextCommand = processFirefoxTextCommand;
+window.showFirefoxInstructions = showFirefoxInstructions;
 
 
 

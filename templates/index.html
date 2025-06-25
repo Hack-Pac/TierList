@@ -5,6 +5,14 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Tier List Maker</title>
     <link href="{{ url_for('static', filename='css/output.css') }}" rel="stylesheet">
+    <!-- Web Speech API Polyfill for better browser support -->
+    <script src="https://cdn.jsdelivr.net/npm/@mozilla/speaktome-web@0.1.0/dist/speaktome.min.js"></script>
+    <!-- Annyang.js for enhanced voice recognition -->
+    <script src="https://cdn.jsdelivr.net/npm/annyang@2.6.1/dist/annyang.min.js"></script>
+    <!-- Additional polyfill for Firefox support -->
+    <script src="https://cdn.jsdelivr.net/npm/web-speech-cognitive-services@7.1.4/lib/SpeechSDK.js"></script>
+    <!-- SpeechKITT for better UI feedback -->
+    <script src="https://cdn.jsdelivr.net/npm/speechkitt@1.0.0/dist/speechkitt.min.js"></script>
 </head>
 <body class="min-h-screen bg-base-100">
     <!-- header with theme toggle -->
@@ -68,9 +76,22 @@
                             <span>8</span>
                         </div>
                     </div>
-                    <div class="flex gap-2">
-                        <button id="import-btn" class="btn btn-accent">📂 Import Tier List</button>
-                        <button id="save-btn" class="btn btn-secondary">💾 Save Tier List</button>
+                    <div class="flex flex-col gap-2">
+                        <div class="flex gap-2">
+                            <button id="voice-control-btn" onclick="toggleVoiceControl()" class="btn btn-accent" title="Toggle voice control">🎤 Voice Control</button>
+                            <button id="import-btn" class="btn btn-accent">📂 Import Tier List</button>
+                            <button id="save-btn" class="btn btn-secondary">💾 Save Tier List</button>
+                        </div>
+                        <div class="flex gap-2 mt-2">
+                            <input type="text" id="voice-command-input" placeholder="Type: Move item to S tier" 
+                                   class="input input-sm input-primary flex-1 max-w-xs" 
+                                   onkeypress="handleVoiceInputKeypress(event)">
+                            <button onclick="processTextCommand()" class="btn btn-sm btn-primary" title="Execute text command">▶</button>
+                        </div>
+                        <div class="text-xs text-center text-base-content/70">
+                            💡 Voice commands: "Move [item] to [tier] tier"<br>
+                            ⌨️ Or type commands above • 🦊 Firefox: Enable speech in about:config
+                        </div>
                     </div>
                     <input type="file" id="import-input" accept=".json" class="hidden">
                 </div>

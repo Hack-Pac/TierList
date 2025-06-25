@@ -31,6 +31,35 @@
   @apply border-2 border-dashed border-accent bg-accent/10 rounded-lg;
 }
 
+/* Voice control button animations */
+#voice-control-btn.btn-success {
+  animation: pulse 2s infinite;
+}
+
+@keyframes pulse {
+  0%, 100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.7;
+  }
+}
+
+/* Firefox voice fallback styling */
+#firefox-voice-fallback {
+  backdrop-filter: blur(10px);
+  border: 1px solid rgba(var(--bc), 0.2);
+}
+
+#firefox-voice-fallback input {
+  font-size: 0.875rem;
+}
+
+#firefox-voice-fallback .link {
+  text-decoration: underline;
+  color: var(--primary);
+}
+
 
 
 
