@@ -2757,7 +2757,6 @@ html {
 .pointer-events-none {
   pointer-events: none;
 }
-
 .visible {
   visibility: visible;
 }
@@ -3039,7 +3038,6 @@ html {
 .text-center {
   text-align: center;
 }
-
 .text-2xl {
   font-size: 1.5rem;
   line-height: 2rem;
@@ -3225,6 +3223,8 @@ html {
     grid-template-columns: repeat(6, minmax(0, 1fr));
   }
 } 
+
+
 
 
 
