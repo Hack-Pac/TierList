@@ -46,11 +46,9 @@ def upload_files():
     
     uploaded_files = []
     errors = []
-    
     for file in files:
         if file.filename == '':
             continue
-            
         if not file or not allowed_file(file.filename):
             errors.append(f'Invalid file type: {file.filename}')
             continue
@@ -64,7 +62,6 @@ def upload_files():
             
             #save file with error handling
             file.save(file_path)
-            
             uploaded_files.append({
                 'filename': unique_filename,
                 'original_name': original_filename,
@@ -76,7 +73,6 @@ def upload_files():
     
     if errors and not uploaded_files:
         return jsonify({'error': '; '.join(errors)}), 400
-    
     response_data = {'files': uploaded_files}
     if errors:
         response_data['warnings'] = errors
@@ -97,7 +93,6 @@ def uploaded_file(filename):
         return response
     except FileNotFoundError:
         return jsonify({'error': 'File not found'}), 404
-
 @app.route('/import', methods=['POST'])
 def import_tierlist():
     """import a previously exported tierlist JSON file"""
@@ -123,7 +118,6 @@ def import_tierlist():
         #validate structure
         if 'tiers' not in tierlist_data:
             return jsonify({'error': 'Invalid tierlist format: missing tiers data'}), 400
-        
         #collect all referenced files and check if they exist
         missing_files = []
         available_files = []
@@ -150,7 +144,6 @@ def import_tierlist():
             'available_files': available_files,
             'missing_files': missing_files
         })
-        
     except json.JSONDecodeError:
         return jsonify({'error': 'Invalid JSON format'}), 400
     except Exception as e:
@@ -193,6 +186,25 @@ if __name__ == '__main__':
     #run with appropriate settings
     debug_mode = os.environ.get('FLASK_ENV') == 'development'
     app.run(debug=debug_mode, host='0.0.0.0', port=int(os.environ.get('PORT', 5000))) 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 

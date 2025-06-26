@@ -2,6 +2,8 @@
 let tierData = [];
 let uploadedFiles = [];
 let draggedElement = null;
+let lofiPlaying = false;
+let lofiAudio = null;
 // default tier labels
 const DEFAULT_TIER_LABELS = ['S', 'A', 'B', 'C', 'D', 'F', 'G', 'H'];
 // initialize app when DOM loads
@@ -13,6 +15,8 @@ function initializeApp() {
     setupTierControls();
     generateDefaultTiers();
     setupThemeToggle();
+    setupLofiMusic();
+    setupPrintButton();
 }
 // theme management
 function setTheme(theme) {
@@ -61,7 +65,6 @@ function handleFileSelect(e) {
 
 function uploadFiles(files) {
     const formData = new FormData();
-    
     //validate files before upload
     let validFiles = 0;
     for (let file of files) {
@@ -180,6 +183,7 @@ function setupTierControls() {
     const saveBtn = document.getElementById('save-btn');
     const importBtn = document.getElementById('import-btn');
     const importInput = document.getElementById('import-input');
+    const printBtn = document.getElementById('print-btn');
     
     slider.addEventListener('input', (e) => {
         const count = parseInt(e.target.value);
@@ -190,6 +194,7 @@ function setupTierControls() {
     saveBtn.addEventListener('click', saveTierList);
     importBtn.addEventListener('click', () => importInput.click());
     importInput.addEventListener('change', handleImportFile);
+    printBtn.addEventListener('click', printTierList);
 }
 function generateDefaultTiers() {
     const count = 5;
@@ -376,12 +381,10 @@ function saveTierList() {
 function handleImportFile(e) {
     const file = e.target.files[0];
     if (!file) return;
-    
     const formData = new FormData();
     formData.append('file', file);
     
     showNotification('Importing tier list...', 'info');
-    
     fetch('/import', {
         method: 'POST',
         body: formData
@@ -476,6 +479,418 @@ function showNotification(message, type = 'info') {
         }
     }, 5000);
 } 
+
+//lofi music functionality
+function setupLofiMusic() {
+    const lofiBtn = document.getElementById('lofi-btn');
+    const lofiIcon = document.getElementById('lofi-icon');
+    lofiAudio = document.getElementById('lofi-audio');
+    
+    if (!lofiAudio) {
+        console.warn('Lofi audio element not found');
+        return;
+    }
+    
+    lofiBtn.addEventListener('click', toggleLofiMusic);
+    
+    //handle audio errors with fallback
+    lofiAudio.addEventListener('error', (e) => {
+        console.warn('Audio source failed:', e);
+        handleAudioFallback();
+    });
+    
+    //handle successful load
+    lofiAudio.addEventListener('canplay', () => {
+        console.log('Audio ready to play');
+    });
+    
+    //handle loading errors
+    lofiAudio.addEventListener('loadstart', () => {
+        console.log('Loading audio...');
+    });
+    
+    //handle network errors
+    lofiAudio.addEventListener('stalled', () => {
+        console.warn('Audio loading stalled');
+        handleAudioFallback();
+    });
+}
+
+function toggleLofiMusic() {
+    if (lofiPlaying) {
+        pauseLofiMusic();
+    } else {
+        //user interaction required for autoplay policy
+        playLofiMusicWithUserGesture();
+    }
+}
+
+function playLofiMusicWithUserGesture() {
+    const lofiIcon = document.getElementById('lofi-icon');
+    const lofiBtn = document.getElementById('lofi-btn');
+    
+    //create or use Web Audio API as primary method
+    if (!window.lofiAudioContext) {
+        createLofiAudioContext();
+        return;
+    }
+    
+    //try to play regular audio with proper user gesture
+    if (lofiAudio && lofiAudio.readyState >= 2) {
+        const playPromise = lofiAudio.play();
+        
+        if (playPromise !== undefined) {
+            playPromise.then(() => {
+                lofiPlaying = true;
+                lofiIcon.textContent = '🎵';
+                lofiBtn.classList.add('btn-active');
+                lofiBtn.title = 'Pause Lofi Music';
+                showNotification('Lofi music started 🎵', 'success');
+            }).catch(error => {
+                console.error('Audio play failed:', error);
+                //fallback to Web Audio API
+                createLofiAudioContext();
+            });
+        }
+    } else {
+        //audio not ready, use Web Audio API
+        createLofiAudioContext();
+    }
+}
+
+function createLofiAudioContext() {
+    try {
+        const audioContext = new (window.AudioContext || window.webkitAudioContext)();
+        
+        //create a proper lofi ambient soundscape
+        const masterGain = audioContext.createGain();
+        masterGain.gain.setValueAtTime(0.2, audioContext.currentTime);
+        masterGain.connect(audioContext.destination);
+        
+        //create low-pass filter for warmth
+        const filter = audioContext.createBiquadFilter();
+        filter.type = 'lowpass';
+        filter.frequency.setValueAtTime(1200, audioContext.currentTime);
+        filter.Q.setValueAtTime(1, audioContext.currentTime);
+        filter.connect(masterGain);
+        
+        //create reverb for ambient space
+        const convolver = audioContext.createConvolver();
+        const impulseBuffer = createReverbImpulse(audioContext, 2, 0.3);
+        convolver.buffer = impulseBuffer;
+        filter.connect(convolver);
+        convolver.connect(masterGain);
+        
+        //chord progression for lofi (Am - F - C - G)
+        const chordProgression = [
+            [220.00, 261.63, 329.63], //Am
+            [174.61, 220.00, 261.63], //F
+            [261.63, 329.63, 392.00], //C
+            [196.00, 246.94, 293.66]  //G
+        ];
+        
+        let currentChord = 0;
+        const oscillators = [];
+        const gainNodes = [];
+        
+        function playChord(chordIndex) {
+            //stop previous chord
+            oscillators.forEach(osc => {
+                try { osc.stop(); } catch(e) {}
+            });
+            oscillators.length = 0;
+            gainNodes.length = 0;
+            
+            const chord = chordProgression[chordIndex];
+            
+            chord.forEach((freq, i) => {
+                const osc = audioContext.createOscillator();
+                const gain = audioContext.createGain();
+                
+                //vary waveforms for texture
+                osc.type = i === 0 ? 'sawtooth' : (i === 1 ? 'triangle' : 'sine');
+                osc.frequency.setValueAtTime(freq, audioContext.currentTime);
+                
+                //different volumes for each note
+                const volumes = [0.15, 0.1, 0.12];
+                gain.gain.setValueAtTime(volumes[i], audioContext.currentTime);
+                
+                //add subtle detuning for warmth
+                const detune = (Math.random() - 0.5) * 10;
+                osc.detune.setValueAtTime(detune, audioContext.currentTime);
+                
+                osc.connect(gain);
+                gain.connect(filter);
+                
+                //fade in the note
+                gain.gain.setValueAtTime(0, audioContext.currentTime);
+                gain.gain.linearRampToValueAtTime(volumes[i], audioContext.currentTime + 0.5);
+                
+                osc.start();
+                
+                oscillators.push(osc);
+                gainNodes.push(gain);
+            });
+        }
+        
+        //add subtle background texture
+        const noiseGain = audioContext.createGain();
+        noiseGain.gain.setValueAtTime(0.03, audioContext.currentTime);
+        noiseGain.connect(filter);
+        
+        const noiseBuffer = audioContext.createBuffer(1, audioContext.sampleRate * 2, audioContext.sampleRate);
+        const noiseData = noiseBuffer.getChannelData(0);
+        for (let i = 0; i < noiseData.length; i++) {
+            noiseData[i] = (Math.random() * 2 - 1) * 0.1;
+        }
+        
+        const noiseSource = audioContext.createBufferSource();
+        noiseSource.buffer = noiseBuffer;
+        noiseSource.loop = true;
+        noiseSource.connect(noiseGain);
+        noiseSource.start();
+        
+        //start with first chord
+        playChord(0);
+        
+        //change chords every 8 seconds for ambient progression
+        const chordInterval = setInterval(() => {
+            if (!window.lofiAudioContext) {
+                clearInterval(chordInterval);
+                return;
+            }
+            currentChord = (currentChord + 1) % chordProgression.length;
+            playChord(currentChord);
+        }, 8000);
+        
+        //add subtle LFO for movement
+        const lfo = audioContext.createOscillator();
+        const lfoGain = audioContext.createGain();
+        lfo.frequency.setValueAtTime(0.1, audioContext.currentTime);
+        lfo.type = 'sine';
+        lfoGain.gain.setValueAtTime(0.02, audioContext.currentTime);
+        
+        lfo.connect(lfoGain);
+        lfoGain.connect(filter.frequency);
+        lfo.start();
+        
+        //update UI
+        lofiPlaying = true;
+        const lofiIcon = document.getElementById('lofi-icon');
+        const lofiBtn = document.getElementById('lofi-btn');
+        lofiIcon.textContent = '🎵';
+        lofiBtn.classList.add('btn-active');
+        lofiBtn.title = 'Pause Lofi Music';
+        
+        showNotification('Ambient lofi music started 🎵', 'success');
+        
+        //store for cleanup
+        window.lofiAudioContext = audioContext;
+        window.lofiOscillators = [...oscillators, lfo, noiseSource];
+        window.lofiChordInterval = chordInterval;
+        
+    } catch (error) {
+        console.error('Failed to create audio context:', error);
+        handleAudioFallback();
+    }
+}
+
+//helper function to create reverb impulse
+function createReverbImpulse(audioContext, duration, decay) {
+    const impulse = audioContext.createBuffer(2, audioContext.sampleRate * duration, audioContext.sampleRate);
+    
+    for (let channel = 0; channel < 2; channel++) {
+        const channelData = impulse.getChannelData(channel);
+        for (let i = 0; i < channelData.length; i++) {
+            const n = channelData.length - i;
+            channelData[i] = (Math.random() * 2 - 1) * Math.pow(n / channelData.length, decay);
+        }
+    }
+    
+    return impulse;
+}
+
+function handleAudioFallback() {
+    //provide user with options as before, but with better messaging
+    const message = `Audio playback blocked by browser security.\n\nThis is normal - browsers block audio to prevent spam.\n\nChoose an option:\n\n1. YouTube Lofi Playlist (Recommended)\n2. Spotify Lo-Fi Beats\n3. Continue without music\n\nEnter number (1-3):`;
+    
+    const choice = prompt(message, '1');
+    
+    if (choice === '1') {
+        window.open('https://www.youtube.com/watch?v=jfKfPfyJRdk&list=PLOHoVaTp8R7dWOScs4a6IoYN9yiEV6WpW', '_blank', 'noopener,noreferrer');
+        showNotification('Opened YouTube lofi playlist - enjoy! 🎵', 'success');
+    } else if (choice === '2') {
+        window.open('https://open.spotify.com/playlist/37i9dQZF1DWWQRwui0ExPn', '_blank', 'noopener,noreferrer');
+        showNotification('Opened Spotify lofi playlist - enjoy! 🎵', 'success');
+    } else {
+        showNotification('Continuing without background music', 'info');
+    }
+    
+    resetLofiButton();
+}
+
+function pauseLofiMusic() {
+    const lofiIcon = document.getElementById('lofi-icon');
+    const lofiBtn = document.getElementById('lofi-btn');
+    
+    //pause regular audio if available
+    if (lofiAudio && !lofiAudio.paused) {
+        lofiAudio.pause();
+    }
+    
+    //stop oscillators and intervals if active
+    if (window.lofiOscillators) {
+        try {
+            window.lofiOscillators.forEach(oscillator => {
+                try { oscillator.stop(); } catch(e) {}
+            });
+        } catch (error) {
+            console.warn('Error stopping oscillators:', error);
+        }
+    }
+    
+    //clear chord progression interval
+    if (window.lofiChordInterval) {
+        clearInterval(window.lofiChordInterval);
+        window.lofiChordInterval = null;
+    }
+    
+    //close audio context
+    if (window.lofiAudioContext) {
+        try {
+            window.lofiAudioContext.close();
+            window.lofiAudioContext = null;
+            window.lofiOscillators = null;
+        } catch (error) {
+            console.warn('Error closing audio context:', error);
+        }
+    }
+    
+    lofiPlaying = false;
+    lofiIcon.textContent = '⏸️';
+    lofiBtn.classList.remove('btn-active');
+    lofiBtn.title = 'Play Lofi Music';
+    showNotification('Lofi music paused', 'info');
+}
+
+function resetLofiButton() {
+    const lofiIcon = document.getElementById('lofi-icon');
+    const lofiBtn = document.getElementById('lofi-btn');
+    
+    //cleanup any active audio
+    if (window.lofiOscillators) {
+        try {
+            window.lofiOscillators.forEach(oscillator => {
+                try { oscillator.stop(); } catch(e) {}
+            });
+        } catch (error) {
+            console.warn('Error cleaning up oscillators:', error);
+        }
+    }
+    
+    //clear chord progression interval
+    if (window.lofiChordInterval) {
+        clearInterval(window.lofiChordInterval);
+        window.lofiChordInterval = null;
+    }
+    
+    //close audio context
+    if (window.lofiAudioContext) {
+        try {
+            window.lofiAudioContext.close();
+            window.lofiAudioContext = null;
+            window.lofiOscillators = null;
+        } catch (error) {
+            console.warn('Error cleaning up audio context:', error);
+        }
+    }
+    
+    lofiPlaying = false;
+    lofiIcon.textContent = '🎵';
+    lofiBtn.classList.remove('btn-active');
+    lofiBtn.title = 'Toggle Lofi Music';
+}
+
+function playLofiMusic() {
+    //use the new method with user gesture handling
+    playLofiMusicWithUserGesture();
+}
+
+//print functionality
+function setupPrintButton() {
+    //ensure print button exists
+    const printBtn = document.getElementById('print-btn');
+    if (!printBtn) {
+        console.warn('Print button not found');
+        return;
+    }
+}
+
+function printTierList() {
+    //pause lofi music if playing
+    if (lofiPlaying) {
+        pauseLofiMusic();
+    }
+    
+    //check if there are tiers to print
+    if (tierData.length === 0) {
+        showNotification('No tiers to print. Create some tiers first!', 'warning');
+        return;
+    }
+    
+    //check if any tiers have content
+    const hasContent = tierData.some(tier => tier.files.length > 0);
+    if (!hasContent) {
+        const proceed = confirm('Your tier list appears to be empty. Print anyway?');
+        if (!proceed) return;
+    }
+    
+    showNotification('Preparing tier list for printing...', 'info');
+    
+    //brief delay to show notification then print
+    setTimeout(() => {
+        window.print();
+    }, 500);
+}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
