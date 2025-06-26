@@ -109,7 +109,6 @@
 /*
 ! tailwindcss v3.4.17 | MIT License | https://tailwindcss.com
 */
-
 /*
 1. Prevent padding and border from affecting element width. (https://github.com/mozdevs/cssremedy/issues/4)
 2. Allow adding a border to an element by just adding a border-width. (https://github.com/tailwindcss/tailwindcss/pull/116)
@@ -163,7 +162,6 @@ html,
   -webkit-tap-highlight-color: transparent;
   /* 7 */
 }
-
 /*
 1. Remove the margin in all browsers.
 2. Inherit line-height from `html` so users can set them as a class directly on the `html` element.
@@ -213,7 +211,6 @@ h6 {
   font-size: inherit;
   font-weight: inherit;
 }
-
 /*
 Reset links to optimize for opt-in styling instead of opt-out.
 */
@@ -374,7 +371,6 @@ Remove the additional `:invalid` styles in Firefox. (https://github.com/mozilla/
 /*
 Add the correct vertical alignment in Chrome and Firefox.
 */
-
 progress {
   vertical-align: baseline;
 }
@@ -584,7 +580,6 @@ video {
     --fallback-er: #ff6f70;
     --fallback-erc: #000000;
   }
-
   @media (prefers-color-scheme: dark) {
     :root {
       color-scheme: dark;
@@ -691,7 +686,6 @@ html {
     --bc: 74.6477% 0.0216 264.435964;
   }
 }
-
 [data-theme=coffee] {
   color-scheme: dark;
   --b2: 20.1585% 0.021457 329.708637;
@@ -968,7 +962,6 @@ html {
   --tw-content: attr(aria-label);
   content: var(--tw-content);
 }
-
 .card {
   position: relative;
   display: flex;
@@ -1699,7 +1692,6 @@ html {
   .btn-info {
     --btn-color: var(--in);
   }
-
   .btn-error {
     --btn-color: var(--er);
   }
@@ -1735,7 +1727,6 @@ html {
   box-shadow: var(--tw-ring-offset-shadow, 0 0 #0000), var(--tw-ring-shadow, 0 0 #0000), var(--tw-shadow);
   outline-color: currentColor;
 }
-
 .btn.glass.btn-active {
   --glass-opacity: 25%;
   --glass-border-opacity: 15%;
@@ -1811,7 +1802,6 @@ html {
   --tw-text-opacity: 1;
   color: var(--fallback-in,oklch(var(--in)/var(--tw-text-opacity)));
 }
-
 .btn-outline.btn-info.btn-active {
   --tw-text-opacity: 1;
   color: var(--fallback-inc,oklch(var(--inc)/var(--tw-text-opacity)));
@@ -1960,7 +1950,6 @@ html {
   color: var(--fallback-bc,oklch(var(--bc)/var(--tw-placeholder-opacity)));
   --tw-placeholder-opacity: 0.2;
 }
-
 .file-input-disabled::placeholder,
   .file-input[disabled]::placeholder {
   color: var(--fallback-bc,oklch(var(--bc)/var(--tw-placeholder-opacity)));
@@ -2042,7 +2031,6 @@ html {
 .input:has(> input[disabled]) > input[disabled] {
   cursor: not-allowed;
 }
-
 .input::-webkit-date-and-time-value {
   text-align: inherit;
 }
@@ -2056,7 +2044,6 @@ html {
 .join > :where(*:not(:first-child)):is(.btn) {
   margin-inline-start: calc(var(--border-btn) * -1);
 }
-
 .link:focus {
   outline: 2px solid transparent;
   outline-offset: 2px;
@@ -2307,11 +2294,9 @@ html {
   0% {
     transform: translateY(-0.125em);
   }
-
   40% {
     transform: translateY(-0.125em);
   }
-
   100% {
     transform: translateY(0);
   }
@@ -2364,7 +2349,6 @@ html {
 .steps .step:first-child:before {
   content: none;
 }
-
 .steps .step[data-content]:after {
   content: attr(data-content);
 }
@@ -2402,7 +2386,6 @@ html {
 [dir="rtl"] .toggle {
   --handleoffsetcalculator: calc(var(--handleoffset) * 1);
 }
-
 .toggle:focus-visible {
   outline-style: solid;
   outline-width: 2px;
@@ -2598,7 +2581,6 @@ html {
   border-end-end-radius: inherit;
   border-start-end-radius: inherit;
 }
-
 .steps-horizontal .step {
   display: grid;
   grid-template-columns: repeat(1, minmax(0, 1fr));
@@ -2679,7 +2661,6 @@ html {
 .card-compact .card-title {
   margin-bottom: 0.25rem;
 }
-
 .card-normal .card-body {
   padding: var(--padding-card, 2rem);
   font-size: 1rem;
@@ -2699,7 +2680,6 @@ html {
 .join.join-vertical > :where(*:not(:first-child)):is(.btn) {
   margin-top: calc(var(--border-btn) * -1);
 }
-
 .join.join-horizontal > :where(*:not(:first-child)) {
   margin-top: 0px;
   margin-bottom: 0px;
@@ -2909,7 +2889,6 @@ html {
 .flex-col {
   flex-direction: column;
 }
-
 .flex-wrap {
   flex-wrap: wrap;
 }
@@ -3223,6 +3202,50 @@ html {
     grid-template-columns: repeat(6, minmax(0, 1fr));
   }
 } 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
