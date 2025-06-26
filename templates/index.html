@@ -21,6 +21,10 @@
             <h1 class="text-2xl font-bold text-primary">🏆 Tier List Maker</h1>
         </div>
         <div class="navbar-end">
+            <!-- print button -->
+            <button id="print-btn" class="btn btn-ghost btn-circle mr-2" title="Print Tier List">
+                <span>🖨️</span>
+            </button>
             <!-- theme toggle -->
             <div class="dropdown dropdown-end">
                 <label tabindex="0" class="btn btn-ghost btn-circle">
@@ -103,6 +107,16 @@
             <!-- tiers will be generated dynamically -->
         </div>
     </main>
+
+        <!-- hidden audio element for lofi music -->
+    <audio id="lofi-audio" loop preload="none" crossorigin="anonymous">
+        <!-- Generated lofi chill track -->
+        <source src="{{ url_for('static', filename='audio/lofi-chill.wav') }}" type="audio/wav">
+        <!-- Fallback to original ambient track if available -->
+        <source src="{{ url_for('static', filename='audio/ambient-lofi.wav') }}" type="audio/wav">
+        Your browser does not support the audio element.
+    </audio>
+    
     <script src="{{ url_for('static', filename='js/app.js') }}"></script>
 </body>
 </html> 

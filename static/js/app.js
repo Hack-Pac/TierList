@@ -41,6 +41,8 @@ function initializeApp() {
     generateDefaultTiers();
     setupThemeToggle();
     setupVoiceControl();
+    setupLofiMusic();
+    setupPrintButton();
 }
 // theme management
 function setTheme(theme) {
@@ -1731,73 +1733,179 @@ function toggleImageRecognition() {
     }
 }
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
+//lofi music functionality
+function setupLofiMusic() {
+    const lofiBtn = document.getElementById('lofi-btn');
+    const lofiIcon = document.getElementById('lofi-icon');
+    const lofiAudio = document.getElementById('lofi-audio');
+    
+    if (!lofiBtn || !lofiIcon || !lofiAudio) {
+        console.error('Lofi music elements not found in DOM');
+        return;
+    }
+    
+    let isPlaying = false;
+
+    lofiBtn.addEventListener('click', toggleLofiMusic);
+
+    function toggleLofiMusic() {
+        if (isPlaying) {
+            lofiAudio.pause();
+            lofiIcon.textContent = '🎵';
+            lofiBtn.classList.remove('btn-accent');
+            lofiBtn.classList.add('btn-ghost');
+            isPlaying = false;
+            showNotification('Lofi music paused', 'info');
+        } else {
+            //load audio if not already loaded
+            if (lofiAudio.readyState === 0) {
+                lofiAudio.load();
+            }
+            
+            lofiAudio.play().then(() => {
+                lofiIcon.textContent = '🎶';
+                lofiBtn.classList.remove('btn-ghost');
+                lofiBtn.classList.add('btn-accent');
+                isPlaying = true;
+                showNotification('Lofi music playing...', 'success');
+            }).catch((error) => {
+                console.error('Error playing lofi music:', error);
+                showNotification('Could not play lofi music', 'error');
+            });
+        }
+    }
+
+    //handle audio events
+    lofiAudio.addEventListener('ended', () => {
+        //audio will loop automatically due to loop attribute
+        console.log('Lofi audio looped');
+    });
+
+    lofiAudio.addEventListener('error', (e) => {
+        console.error('Lofi audio error:', e);
+        showNotification('Error loading lofi music', 'error');
+        lofiIcon.textContent = '🎵';
+        lofiBtn.classList.remove('btn-accent');
+        lofiBtn.classList.add('btn-ghost');
+        isPlaying = false;
+    });
+}
+
+//print functionality
+function setupPrintButton() {
+    const printBtn = document.getElementById('print-btn');
+    if (!printBtn) {
+        console.error('Print button not found in DOM');
+        return;
+    }
+    printBtn.addEventListener('click', printTierList);
+}
+
+function printTierList() {
+    //create print-friendly version
+    const printWindow = window.open('', '_blank');
+    
+    const printContent = generatePrintableHTML();
+    
+    printWindow.document.write(printContent);
+    printWindow.document.close();
+    
+    //wait for images to load then print
+    printWindow.onload = function() {
+        setTimeout(() => {
+            printWindow.print();
+            printWindow.close();
+        }, 500);
+    };
+    
+    showNotification('Opening print dialog...', 'info');
+}
+
+function generatePrintableHTML() {
+    const timestamp = new Date().toLocaleString();
+    
+    let tierHTML = '';
+    tierData.forEach(tier => {
+        tierHTML += `
+            <div style="page-break-inside: avoid; margin-bottom: 20px; border: 2px solid #333; border-radius: 8px;">
+                <div style="display: flex; align-items: center; min-height: 80px;">
+                    <div style="background: #333; color: white; padding: 20px; font-size: 24px; font-weight: bold; min-width: 80px; text-align: center;">
+                        ${tier.label}
+                    </div>
+                    <div style="flex: 1; padding: 10px; display: flex; flex-wrap: wrap; gap: 10px; align-items: center;">
+                        ${tier.files.map(file => {
+                            if (file.is_audio) {
+                                return `
+                                    <div style="width: 60px; height: 60px; border: 1px solid #ccc; display: flex; flex-direction: column; align-items: center; justify-content: center; font-size: 12px; text-align: center;">
+                                        <div style="font-size: 20px;">🎵</div>
+                                        <div style="font-size: 8px; overflow: hidden; text-overflow: ellipsis;">${file.original_name.substring(0, 10)}</div>
+                                    </div>
+                                `;
+                            } else {
+                                return `<img src="${file.url}" style="height: 60px; width: auto; object-fit: contain; border: 1px solid #ccc;">`;
+                            }
+                        }).join('')}
+                    </div>
+                </div>
+            </div>
+        `;
+    });
+
+    return `
+        <!DOCTYPE html>
+        <html>
+        <head>
+            <title>Tier List - ${timestamp}</title>
+            <style>
+                body { 
+                    font-family: Arial, sans-serif; 
+                    margin: 20px; 
+                    color: #333;
+                }
+                .header { 
+                    text-align: center; 
+                    margin-bottom: 30px; 
+                    border-bottom: 2px solid #333; 
+                    padding-bottom: 20px;
+                }
+                .header h1 { 
+                    margin: 0; 
+                    font-size: 28px; 
+                }
+                .header .timestamp { 
+                    margin: 10px 0 0 0; 
+                    color: #666; 
+                    font-size: 14px; 
+                }
+                @media print {
+                    body { margin: 0; }
+                    .header { page-break-after: avoid; }
+                }
+            </style>
+        </head>
+        <body>
+            <div class="header">
+                <h1>🏆 Tier List</h1>
+                <p class="timestamp">Generated on ${timestamp}</p>
+            </div>
+            ${tierHTML}
+        </body>
+                 </html>
+     `;
+}
+
+//placeholder functions for image recognition (disabled by default)
+function analyzeImage(imageUrl, filename) {
+    //image recognition is disabled - return null
+    return Promise.resolve(null);
+}
+
+function addImageRecognitionOverlay(container, recognition) {
+    //add recognition overlay to image container
+    const overlay = document.createElement('div');
+    overlay.className = 'image-recognition-overlay absolute bottom-0 left-0 right-0 bg-black bg-opacity-75 text-white text-xs px-1 py-0.5 rounded-b z-10 pointer-events-none';
+    overlay.style.fontWeight = 'bold';
+    overlay.style.textShadow = '1px 1px 2px rgba(0,0,0,0.8)';
+    overlay.textContent = `🔍 ${recognition}`;
+    container.appendChild(overlay);
+}
