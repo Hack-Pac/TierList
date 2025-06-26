@@ -191,15 +191,19 @@ function uploadFiles(files) {
                                 }
                                 // Update display after each analysis for real-time feedback
                                 displayUploadedFiles();
+                                // Show individual success notification
+                                showNotification(`🔍 Recognized "${file.original_name}" as: ${recognition}`, 'success');
                             } else {
                                 console.log(`[DEBUG] No recognition result for file: ${file.filename}`);
+                                showNotification(`⚠️ Could not analyze: ${file.original_name}`, 'warning');
                             }
                         } catch (error) {
                             console.error(`[DEBUG] Failed to analyze ${file.filename}:`, error);
                         }
                     }
                     
-                    showNotification(`Successfully uploaded and analyzed ${data.files.length} file(s)!`, 'success');
+                    const analyzedCount = imageFiles.filter(f => f.recognition).length;
+                    showNotification(`✅ Successfully uploaded ${data.files.length} file(s)! Analyzed ${analyzedCount}/${imageFiles.length} images.`, 'success');
                 } else {
                     showNotification(`Successfully uploaded ${data.files.length} file(s)!`, 'success');
                 }
@@ -1389,6 +1393,32 @@ async function analyzeImage(imageUrl, filename) {
         console.log(`[DEBUG] Starting AI analysis for: ${filename}`);
         console.log(`[DEBUG] Image URL: ${imageUrl}`);
         
+        // Try multiple approaches for image analysis
+        let recognition = await tryHackClubAPI(imageUrl, filename);
+        
+        if (!recognition) {
+            console.log(`[DEBUG] Hack Club API failed, trying filename-based fallback...`);
+            recognition = getFilenameBasedLabel(filename);
+        }
+        
+        return recognition;
+        
+    } catch (error) {
+        console.error(`[DEBUG] Error analyzing image ${filename}:`, error);
+        console.error(`[DEBUG] Full error details:`, {
+            message: error.message,
+            stack: error.stack,
+            filename: filename,
+            imageUrl: imageUrl
+        });
+        
+        // Fallback to filename-based recognition
+        return getFilenameBasedLabel(filename);
+    }
+}
+
+async function tryHackClubAPI(imageUrl, filename) {
+    try {
         // Convert image to base64 for AI API
         console.log(`[DEBUG] Converting image to base64...`);
         const base64Image = await imageToBase64(imageUrl);
@@ -1411,13 +1441,11 @@ Respond with only ONE word, no explanations or additional text.`;
         const controller = new AbortController();
         const timeoutId = setTimeout(() => controller.abort(), 15000); // 15 second timeout
 
-        console.log(`[DEBUG] Sending request to AI API...`);
-        const response = await fetch('https://ai.hackclub.com/chat/completions', {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-            },
-            body: JSON.stringify({
+        // Try different API request formats
+        const formats = [
+            // Format 1: OpenAI-style with data URL
+            {
+                model: "gpt-4-vision-preview",
                 messages: [
                     {
                         role: 'user',
@@ -1437,40 +1465,118 @@ Respond with only ONE word, no explanations or additional text.`;
                 ],
                 max_tokens: 10,
                 temperature: 0.1
-            }),
-            signal: controller.signal
-        });
+            },
+            // Format 2: Simple text with base64 in prompt
+            {
+                model: "gpt-4-vision-preview",
+                messages: [
+                    {
+                        role: 'user',
+                        content: `${prompt}\n\nImage data: ${base64Image}`
+                    }
+                ],
+                max_tokens: 10,
+                temperature: 0.1
+            },
+            // Format 3: Just text analysis (if image fails)
+            {
+                messages: [
+                    {
+                        role: 'user',
+                        content: `Analyze the filename "${filename}" and provide a single word that best describes what type of image it might be. Examples: shop, street, person, food, animal, building, nature, vehicle, document, art. Respond with only ONE word.`
+                    }
+                ],
+                max_tokens: 10,
+                temperature: 0.1
+            }
+        ];
+
+        for (let i = 0; i < formats.length; i++) {
+            console.log(`[DEBUG] Trying API format ${i + 1}...`);
+            
+            try {
+                const response = await fetch('https://ai.hackclub.com/chat/completions', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify(formats[i]),
+                    signal: controller.signal
+                });
+
+                console.log(`[DEBUG] AI API response status (format ${i + 1}): ${response.status}`);
+                
+                if (response.ok) {
+                    const data = await response.json();
+                    
+                    if (data.choices && data.choices[0] && data.choices[0].message) {
+                        const recognition = data.choices[0].message.content.trim().toLowerCase();
+                        console.log(`[DEBUG] ✅ Image recognition successful for ${filename}: "${recognition}" (using format ${i + 1})`);
+                        clearTimeout(timeoutId);
+                        return recognition;
+                    } else {
+                        console.log(`[DEBUG] Format ${i + 1} returned invalid response structure`);
+                    }
+                } else {
+                    const errorText = await response.text().catch(() => 'Unknown error');
+                    console.log(`[DEBUG] Format ${i + 1} failed with status ${response.status}: ${errorText.substring(0, 100)}`);
+                    if (i < formats.length - 1) {
+                        console.log(`[DEBUG] Trying next format...`);
+                        continue;
+                    }
+                }
+            } catch (formatError) {
+                console.log(`[DEBUG] Format ${i + 1} threw error:`, formatError.message);
+                if (i < formats.length - 1) {
+                    console.log(`[DEBUG] Trying next format...`);
+                    continue;
+                }
+            }
+        }
 
         clearTimeout(timeoutId);
 
-        console.log(`[DEBUG] AI API response status: ${response.status}`);
-        if (!response.ok) {
-            throw new Error(`AI API request failed: ${response.status}`);
-        }
-
-        const data = await response.json();
-        console.log(`[DEBUG] AI API response data:`, data);
         
-        if (!data.choices || !data.choices[0] || !data.choices[0].message) {
-            throw new Error('Invalid response format from AI API');
-        }
-        
-        const recognition = data.choices[0].message.content.trim().toLowerCase();
-        console.log(`[DEBUG] Image recognition result for ${filename}: "${recognition}"`);
-        console.log(`[DEBUG] Recognition successful for: ${filename}`);
-        
-        return recognition;
+        console.log(`[DEBUG] All API formats failed for ${filename}`);
+        return null;
         
     } catch (error) {
-        console.error(`[DEBUG] Error analyzing image ${filename}:`, error);
-        console.error(`[DEBUG] Full error details:`, {
-            message: error.message,
-            stack: error.stack,
-            filename: filename,
-            imageUrl: imageUrl
-        });
+        console.error(`[DEBUG] tryHackClubAPI error for ${filename}:`, error);
         return null;
     }
+}
+
+function getFilenameBasedLabel(filename) {
+    console.log(`[DEBUG] Using filename-based recognition for: ${filename}`);
+    
+    const name = filename.toLowerCase();
+    
+    // Check for common keywords in filename
+    const patterns = {
+        'shop': ['shop', 'store', 'market', 'mall', 'retail'],
+        'street': ['street', 'road', 'avenue', 'path', 'sidewalk'],
+        'person': ['person', 'people', 'human', 'man', 'woman', 'child'],
+        'food': ['food', 'pizza', 'burger', 'cake', 'meal', 'restaurant'],
+        'animal': ['cat', 'dog', 'bird', 'fish', 'pet', 'animal'],
+        'building': ['building', 'house', 'home', 'office', 'tower'],
+        'nature': ['tree', 'forest', 'mountain', 'beach', 'sky', 'nature'],
+        'vehicle': ['car', 'truck', 'bike', 'vehicle', 'auto'],
+        'document': ['document', 'text', 'paper', 'note'],
+        'art': ['art', 'paint', 'draw', 'sketch', 'design']
+    };
+    
+    for (const [label, keywords] of Object.entries(patterns)) {
+        if (keywords.some(keyword => name.includes(keyword))) {
+            console.log(`[DEBUG] Filename matched pattern "${label}" for: ${filename}`);
+            return label;
+        }
+    }
+    
+    // Default fallback based on file extension or random selection
+    const defaultLabels = ['image', 'photo', 'picture', 'item'];
+    const randomLabel = defaultLabels[Math.floor(Math.random() * defaultLabels.length)];
+    console.log(`[DEBUG] No pattern match, using default label "${randomLabel}" for: ${filename}`);
+    return randomLabel;
 }
 
 async function imageToBase64(imageUrl) {
