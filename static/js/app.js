@@ -3,7 +3,7 @@ let tierData = [];
 let uploadedFiles = [];
 let draggedElement = null;
 
-// Voice control state
+// voice function state
 let isVoiceControlActive = false;
 let recognition = null;
 let voiceControlButton = null;
@@ -14,7 +14,7 @@ let speechKittReady = false;
 // Image recognition state
 let imageRecognitionEnabled = true;
 
-// Browser detection
+// browser detection -- for VF
 function detectBrowser() {
     const userAgent = navigator.userAgent.toLowerCase();
     if (userAgent.indexOf('firefox') > -1) {
@@ -160,13 +160,13 @@ function uploadFiles(files) {
             console.log(`[DEBUG] Adding ${data.files.length} files to uploadedFiles`);
             uploadedFiles = [...uploadedFiles, ...data.files];
             
-            // Show uploaded files immediately
+            // show uploaded files immediately
             displayUploadedFiles();
             
             console.log(`[DEBUG] Image recognition enabled: ${imageRecognitionEnabled}`);
             console.log(`[DEBUG] Uploaded files:`, data.files);
             
-            // Analyze uploaded images with AI recognition
+            // call image recogition
             if (imageRecognitionEnabled) {
                 const imageFiles = data.files.filter(file => !file.is_audio);
                 console.log(`[DEBUG] Image recognition enabled. Found ${imageFiles.length} image files to analyze:`, imageFiles.map(f => f.filename));
@@ -175,7 +175,7 @@ function uploadFiles(files) {
                 if (imageFiles.length > 0) {
                     showNotification(`Analyzing ${imageFiles.length} image(s)...`, 'info');
                     
-                    // Analyze images sequentially to avoid overwhelming the API
+                    // rate limit
                     for (const file of imageFiles) {
                         try {
                             console.log(`[DEBUG] Analyzing file: ${file.filename}`);
@@ -183,19 +183,16 @@ function uploadFiles(files) {
                             if (recognition) {
                                 console.log(`[DEBUG] Setting recognition "${recognition}" for file: ${file.filename}`);
                                 file.recognition = recognition;
-                                // Find the file in uploadedFiles and update it
                                 const uploadedFile = uploadedFiles.find(f => f.filename === file.filename);
                                 if (uploadedFile) {
                                     uploadedFile.recognition = recognition;
                                     console.log(`[DEBUG] Updated uploadedFile with recognition: ${uploadedFile.filename} -> ${uploadedFile.recognition}`);
                                 }
-                                // Update display after each analysis for real-time feedback
                                 displayUploadedFiles();
-                                // Show individual success notification
-                                showNotification(`🔍 Recognized "${file.original_name}" as: ${recognition}`, 'success');
+                                showNotification(`Recognized "${file.original_name}" as: ${recognition}`, 'success');
                             } else {
                                 console.log(`[DEBUG] No recognition result for file: ${file.filename}`);
-                                showNotification(`⚠️ Could not analyze: ${file.original_name}`, 'warning');
+                                showNotification(`Could not analyze: ${file.original_name}`, 'warning');
                             }
                         } catch (error) {
                             console.error(`[DEBUG] Failed to analyze ${file.filename}:`, error);
@@ -203,7 +200,7 @@ function uploadFiles(files) {
                     }
                     
                     const analyzedCount = imageFiles.filter(f => f.recognition).length;
-                    showNotification(`✅ Successfully uploaded ${data.files.length} file(s)! Analyzed ${analyzedCount}/${imageFiles.length} images.`, 'success');
+                    showNotification(`Successfully uploaded ${data.files.length} file(s)! Analyzed ${analyzedCount}/${imageFiles.length} images.`, 'success');
                 } else {
                     showNotification(`Successfully uploaded ${data.files.length} file(s)!`, 'success');
                 }
@@ -287,7 +284,7 @@ function createDraggableFile(file) {
             </div>
         `;
         
-        // Add image recognition overlay if available
+        // add overlay - dependent on toggle states
         if (file.recognition && imageRecognitionEnabled) {
             console.log(`[DEBUG] Adding overlay for file: ${file.filename}, recognition: ${file.recognition}`);
             addImageRecognitionOverlay(container, file.recognition);
@@ -638,23 +635,23 @@ function showNotification(message, type = 'info') {
     }, 5000);
 }
 
-// Voice Control System (Enhanced with Firefox support)
+// voice control
 function setupVoiceControl() {
     currentBrowser = detectBrowser();
     console.log('Detected browser:', currentBrowser);
     
-    // Initialize SpeechKITT if available for better UI
+    // initialize SpeechKITT if available
     if (typeof SpeechKITT !== 'undefined') {
         SpeechKITT.annyang();
         SpeechKITT.setStylesheet('//cdnjs.cloudflare.com/ajax/libs/SpeechKITT/1.0.0/themes/flat.css');
         speechKittReady = true;
     }
     
-    // Firefox-specific setup
+    // firefox-specific setup
     if (currentBrowser === 'firefox') {
-        setupFirefoxVoiceControl();
+        setupFirefoxVoiceControl(); // asks the user to enable voice recogition in Firefox config
     }
-    // Try Annyang.js first (if available), then fall back to native Web Speech API
+    // Try Annyang.js first, then fall back to native Web Speech API
     else if (typeof annyang !== 'undefined') {
         setupAnnyangVoiceControl();
     } else if ('webkitSpeechRecognition' in window || 'SpeechRecognition' in window) {
@@ -669,12 +666,9 @@ function setupVoiceControl() {
 function setupFirefoxVoiceControl() {
     console.log('Setting up Firefox-specific voice recognition');
     
-    // Check if Firefox has speech recognition enabled
     if ('SpeechRecognition' in window || 'webkitSpeechRecognition' in window) {
-        // Firefox has experimental support, use native API
         setupNativeVoiceControlWithFirefoxTweaks();
     } else {
-        // Firefox doesn't have speech recognition, offer alternatives
         setupFirefoxFallback();
     }
 }
@@ -690,13 +684,11 @@ function setupNativeVoiceControlWithFirefoxTweaks() {
     
     recognition = new SpeechRecognition();
     
-    // Firefox-specific settings
-    recognition.continuous = false; // Firefox works better with non-continuous mode
-    recognition.interimResults = true; // Get interim results for better responsiveness
+    recognition.continuous = false; 
+    recognition.interimResults = true; 
     recognition.lang = 'en-US';
-    recognition.maxAlternatives = 5; // More alternatives for Firefox
+    recognition.maxAlternatives = 5; 
     
-    // Firefox-optimized event handlers
     recognition.onstart = () => {
         console.log('Firefox voice recognition started');
         updateVoiceControlUI(true);
@@ -706,7 +698,6 @@ function setupNativeVoiceControlWithFirefoxTweaks() {
     recognition.onend = () => {
         console.log('Firefox voice recognition ended');
         if (isVoiceControlActive) {
-            // Auto-restart for Firefox with delay
             setTimeout(() => {
                 if (isVoiceControlActive) {
                     try {
@@ -732,8 +723,7 @@ function setupNativeVoiceControlWithFirefoxTweaks() {
             showFirefoxPermissionInstructions();
         } else {
             showNotification(`Firefox voice error: ${event.error}`, 'warning');
-            // Auto-retry for Firefox
-            setTimeout(() => {
+                setTimeout(() => {
                 if (isVoiceControlActive) {
                     recognition.start();
                 }
@@ -742,21 +732,18 @@ function setupNativeVoiceControlWithFirefoxTweaks() {
     };
     
     recognition.onresult = (event) => {
-        // Handle both interim and final results for Firefox
         for (let i = event.resultIndex; i < event.results.length; i++) {
             const result = event.results[i];
             
             if (result.isFinal) {
-                // Process final result
                 const transcript = result[0].transcript.toLowerCase().trim();
                 const confidence = result[0].confidence;
                 console.log(`Firefox final transcript: "${transcript}" (confidence: ${confidence})`);
                 
-                if (confidence > 0.5 || currentBrowser === 'firefox') { // Lower threshold for Firefox
+                if (confidence > 0.5 || currentBrowser === 'firefox') { 
                     processVoiceCommand(transcript);
                 }
             } else if (result[0].confidence > 0.8) {
-                // Show interim results for immediate feedback
                 const interimTranscript = result[0].transcript.toLowerCase().trim();
                 console.log(`Firefox interim: "${interimTranscript}"`);
                 showNotification(`Hearing: "${interimTranscript}"`, 'info');
@@ -768,7 +755,7 @@ function setupNativeVoiceControlWithFirefoxTweaks() {
 function setupFirefoxFallback() {
     console.log('Setting up Firefox fallback options');
     
-    // Create a text input fallback for Firefox users
+    // Text input instead of voice
     const fallbackContainer = document.createElement('div');
     fallbackContainer.id = 'firefox-voice-fallback';
     fallbackContainer.className = 'fixed bottom-4 right-4 z-50 bg-base-200 p-4 rounded-lg shadow-xl max-w-sm';
@@ -786,7 +773,6 @@ function setupFirefoxFallback() {
     
     document.body.appendChild(fallbackContainer);
     
-    // Add enter key support
     const input = document.getElementById('firefox-voice-input');
     input.addEventListener('keypress', (e) => {
         if (e.key === 'Enter') {
@@ -794,11 +780,9 @@ function setupFirefoxFallback() {
         }
     });
     
-    // Update the voice control button for Firefox
     recognition = { firefoxFallback: true };
 }
 
-// Global functions for Firefox fallback (accessible from HTML)
 window.processFirefoxTextCommand = processFirefoxTextCommand;
 window.showFirefoxInstructions = showFirefoxInstructions;
 window.toggleImageRecognition = toggleImageRecognition;
@@ -830,7 +814,6 @@ function showFirefoxInstructions() {
     
     showNotification(instructions, 'info');
     
-    // Also show in console for easy copying
     console.log('Firefox Setup Instructions:', instructions);
 }
 
@@ -852,15 +835,12 @@ function showFirefoxPermissionInstructions() {
 function setupAnnyangVoiceControl() {
     console.log('Using Annyang.js for voice recognition');
     
-    // Dynamic command generation based on current state
     function updateAnnyangCommands() {
         const commands = {};
         
-        // Get current tier labels and file names
         const tierLabels = tierData.map(t => t.label.toLowerCase());
         const allFiles = [...uploadedFiles, ...tierData.flatMap(t => t.files)];
         
-        // Create specific commands for recognition labels (AI-identified items)
         allFiles.forEach(file => {
             if (file.recognition) {
                 const recognition = file.recognition.toLowerCase();
@@ -872,9 +852,8 @@ function setupAnnyangVoiceControl() {
             }
         });
         
-        // Create dynamic patterns for each tier (general patterns)
+        // dynamic parsing for ease
         tierLabels.forEach(tier => {
-            // Multiple patterns for natural language
             commands[`move * to ${tier} tier`] = (item) => processVoiceMove(item, tier);
             commands[`put * in ${tier} tier`] = (item) => processVoiceMove(item, tier);
             commands[`move * into ${tier} tier`] = (item) => processVoiceMove(item, tier);
@@ -882,7 +861,7 @@ function setupAnnyangVoiceControl() {
             commands[`* should go to ${tier} tier`] = (item) => processVoiceMove(item, tier);
         });
         
-        // Add general patterns that will use AI parsing
+        // optimize api call
         commands['move * to * tier'] = (item, tier) => processVoiceMove(item, tier);
         commands['put * in * tier'] = (item, tier) => processVoiceMove(item, tier);
         commands['* goes to * tier'] = (item, tier) => processVoiceMove(item, tier);
@@ -893,11 +872,10 @@ function setupAnnyangVoiceControl() {
         annyang.addCommands(commands);
     }
     
-    // Set up Annyang callbacks
     annyang.addCallback('start', () => {
         console.log('Annyang voice recognition started');
         updateVoiceControlUI(true);
-        updateAnnyangCommands(); // Update commands with current state
+        updateAnnyangCommands();
     });
     
     annyang.addCallback('end', () => {
@@ -925,36 +903,33 @@ function setupAnnyangVoiceControl() {
     
     annyang.addCallback('resultNoMatch', (phrases) => {
         console.log('No command match for:', phrases);
-        // Fall back to AI parsing for unmatched phrases
         if (phrases && phrases.length > 0) {
             processVoiceCommand(phrases[0]);
         }
     });
     
-    // Configure Annyang
     annyang.setLanguage('en-US');
-    recognition = annyang; // Store reference for toggle function
+    recognition = annyang; 
 }
 
 function setupNativeVoiceControl() {
     console.log('Using native Web Speech API');
     
-    // Check if browser supports speech recognition
+    // check if browser supports speech recognition
     if (!('webkitSpeechRecognition' in window) && !('SpeechRecognition' in window)) {
         console.warn('Speech recognition not supported in this browser');
         return;
     }
 
-    // Initialize speech recognition
+    // initialize speech recognition
     const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
     recognition = new SpeechRecognition();
     
     recognition.continuous = true;
     recognition.interimResults = false;
     recognition.lang = 'en-US';
-    recognition.maxAlternatives = 3; // Get multiple alternatives for better accuracy
+    recognition.maxAlternatives = 3; 
     
-    // Set up recognition events
     recognition.onstart = () => {
         console.log('Native voice recognition started');
         updateVoiceControlUI(true);
@@ -963,7 +938,6 @@ function setupNativeVoiceControl() {
     recognition.onend = () => {
         console.log('Native voice recognition ended');
         if (isVoiceControlActive) {
-            // Restart recognition if it's supposed to be active
             setTimeout(() => {
                 if (isVoiceControlActive) {
                     recognition.start();
@@ -978,7 +952,6 @@ function setupNativeVoiceControl() {
         console.error('Speech recognition error:', event.error);
         showNotification(`Voice recognition error: ${event.error}`, 'error');
         
-        // Auto-retry for certain errors
         if (event.error === 'network' || event.error === 'audio-capture') {
             setTimeout(() => {
                 if (isVoiceControlActive) {
@@ -991,13 +964,13 @@ function setupNativeVoiceControl() {
     recognition.onresult = (event) => {
         const result = event.results[event.results.length - 1];
         if (result.isFinal) {
-            // Try the most confident result first, then alternatives
+            // try the most confident result first
             for (let i = 0; i < result.length; i++) {
                 const transcript = result[i].transcript.toLowerCase().trim();
                 const confidence = result[i].confidence;
                 console.log(`Voice transcript ${i+1}: "${transcript}" (confidence: ${confidence})`);
                 
-                if (i === 0 || confidence > 0.7) { // Use first result or high-confidence alternatives
+                if (i === 0 || confidence > 0.7) { // use first result
                     processVoiceCommand(transcript);
                     break;
                 }
@@ -1007,7 +980,7 @@ function setupNativeVoiceControl() {
 }
 
 function processVoiceMove(item, tier) {
-    // Direct processing for Annyang-matched commands
+    // if Annyang matched --> perform action
     if (!isProcessingVoiceCommand) {
         isProcessingVoiceCommand = true;
         
@@ -1032,7 +1005,6 @@ function processVoiceMove(item, tier) {
 
         moveItemToTier(file.filename, targetTierIndex);
         
-        // Show success message with recognition label if available
         const displayName = file.recognition ? `"${file.recognition}" (${file.original_name})` : `"${file.original_name}"`;
         showNotification(`Moved ${displayName} to ${tier.toUpperCase()} tier`, 'success');
         isProcessingVoiceCommand = false;
@@ -1053,7 +1025,7 @@ function toggleVoiceControl() {
     if (isVoiceControlActive) {
         try {
             if (recognition.firefoxFallback) {
-                // Firefox fallback mode
+                // Firefox text mode
                 const fallback = document.getElementById('firefox-voice-fallback');
                 if (fallback) {
                     fallback.style.display = 'block';
@@ -1062,12 +1034,10 @@ function toggleVoiceControl() {
                 }
                 showNotification('🦊 Firefox text input mode activated!', 'success');
             } else if (typeof annyang !== 'undefined' && recognition === annyang) {
-                // Using Annyang.js
                 annyang.start();
                 if (speechKittReady) SpeechKITT.show();
                 showNotification('Enhanced voice control activated! Try: "Move cat photo to S tier"', 'success');
             } else {
-                // Using native Web Speech API
                 recognition.start();
                 showNotification(`${currentBrowser === 'firefox' ? '🦊 Firefox' : ''} Voice control activated! Say: "Move [item] to [tier] tier"`, 'success');
             }
@@ -1085,7 +1055,6 @@ function toggleVoiceControl() {
     } else {
         try {
             if (recognition.firefoxFallback) {
-                // Firefox fallback mode
                 const fallback = document.getElementById('firefox-voice-fallback');
                 if (fallback) fallback.style.display = 'none';
                 showNotification('Firefox text input mode deactivated', 'info');
@@ -1111,7 +1080,6 @@ function updateVoiceControlUI(isActive) {
             voiceControlButton.classList.add('btn-success');
             voiceControlButton.classList.remove('btn-accent');
             
-            // Show which system is being used
             let systemType = 'Standard';
             if (recognition && recognition.firefoxFallback) {
                 systemType = '🦊 Text Input';
@@ -1126,7 +1094,6 @@ function updateVoiceControlUI(isActive) {
             voiceControlButton.classList.add('btn-accent');
             
             // Show available system type
-            let systemType = 'Voice Control';
             if (recognition && recognition.firefoxFallback) {
                 systemType = '🦊 Text Input';
             } else if (typeof annyang !== 'undefined') {
@@ -1149,7 +1116,7 @@ async function processVoiceCommand(transcript) {
     showNotification('Processing voice command...', 'info');
 
     try {
-        // Use AI to parse the voice command
+        // use AI to parse the voice command --> triggers when Annyang isn't used
         const command = await parseVoiceCommandWithAI(transcript);
         
         if (command) {
@@ -1170,11 +1137,11 @@ async function parseVoiceCommandWithAI(transcript) {
     
     for (let attempt = 1; attempt <= MAX_RETRIES; attempt++) {
         try {
-            // Get current tier labels and uploaded files for context
+            // get current tier labels and uploaded files for context
             const tierLabels = tierData.map(t => t.label);
             const allFiles = [...uploadedFiles, ...tierData.flatMap(t => t.files)];
             
-            // Create a list of file identifiers prioritizing recognition labels
+            // create a list of file identifiers prioritizing recognition labels
             const fileIdentifiers = allFiles.map(f => {
                 if (f.recognition) {
                     return `"${f.recognition}" (AI-identified as ${f.recognition}, filename: ${f.original_name})`;
@@ -1218,7 +1185,7 @@ If the command is not clear or doesn't match these patterns, respond with: {"act
 
             const controller = new AbortController();
             const timeoutId = setTimeout(() => controller.abort(), 10000); // 10 second timeout
-
+            // Hack Club AI API call
             const response = await fetch('https://ai.hackclub.com/chat/completions', {
                 method: 'POST',
                 headers: {
@@ -1232,7 +1199,7 @@ If the command is not clear or doesn't match these patterns, respond with: {"act
                         }
                     ],
                     max_tokens: 1000,
-                    temperature: 0.1 // Lower temperature for more consistent parsing
+                    temperature: 0.1 
                 }),
                 signal: controller.signal
             });
@@ -1251,10 +1218,10 @@ If the command is not clear or doesn't match these patterns, respond with: {"act
             
             const aiResponse = data.choices[0].message.content.trim();
             
-            // Clean up response (remove any markdown formatting)
+            // clean up response 
             const cleanResponse = aiResponse.replace(/```json\n?|\n?```/g, '').trim();
             
-            // Parse the JSON response
+            // parse the JSON response
             const command = JSON.parse(cleanResponse);
             
             console.log(`AI parsed command (attempt ${attempt}):`, command);
@@ -1263,7 +1230,7 @@ If the command is not clear or doesn't match these patterns, respond with: {"act
                 return null;
             }
             
-            // Validate the response structure
+            // validate the response structure
             if (!command.action || !command.itemName || !command.targetTier) {
                 throw new Error('Invalid command structure returned by AI');
             }
@@ -1274,11 +1241,10 @@ If the command is not clear or doesn't match these patterns, respond with: {"act
             console.error(`Error parsing voice command with AI (attempt ${attempt}):`, error);
             
             if (attempt === MAX_RETRIES) {
-                // Last attempt failed, try simple pattern matching as fallback
                 return parseVoiceCommandSimple(transcript);
             }
             
-            // Wait before retry
+            //  rate limit handling
             await new Promise(resolve => setTimeout(resolve, 1000));
         }
     }
@@ -1287,11 +1253,10 @@ If the command is not clear or doesn't match these patterns, respond with: {"act
 }
 
 function parseVoiceCommandSimple(transcript) {
-    // Simple fallback pattern matching
     const tierLabels = tierData.map(t => t.label.toLowerCase());
     const allFiles = [...uploadedFiles, ...tierData.flatMap(t => t.files)];
     
-    // Try to find patterns like "move X to Y tier"
+    // try to find patterns like "move X to Y tier"
     const patterns = [
         /move (.+) to ([a-z]+) tier/i,
         /put (.+) in ([a-z]+) tier/i,
@@ -1305,14 +1270,14 @@ function parseVoiceCommandSimple(transcript) {
             const itemName = match[1].trim();
             const tierName = match[2].trim().toLowerCase();
             
-            // Check if tier exists
+            // check if tier exists
             if (tierLabels.includes(tierName)) {
-                // Try to find the file
+                // try to find the file
                 const file = findFileByName(allFiles, itemName);
                 if (file) {
                     return {
                         action: 'move',
-                        itemName: itemName, // Use the search term, not the filename
+                        itemName: itemName, // use the search term
                         targetTier: tierName.toUpperCase()
                     };
                 }
@@ -1331,7 +1296,6 @@ async function executeVoiceCommand(command) {
         return;
     }
 
-    // Find the file by name (fuzzy matching)
     const allFiles = [...uploadedFiles, ...tierData.flatMap(t => t.files)];
     const file = findFileByName(allFiles, itemName);
     
@@ -1340,7 +1304,7 @@ async function executeVoiceCommand(command) {
         return;
     }
 
-    // Find the target tier
+    // find the target tier
     const targetTierIndex = tierData.findIndex(tier => 
         tier.label.toLowerCase() === targetTier.toLowerCase()
     );
@@ -1350,10 +1314,10 @@ async function executeVoiceCommand(command) {
         return;
     }
 
-    // Execute the move
+    // execute the move
     moveItemToTier(file.filename, targetTierIndex);
     
-    // Show success message with recognition label if available
+    // show success message with recognition label if available
     const displayName = file.recognition ? `"${file.recognition}" (${file.original_name})` : `"${file.original_name}"`;
     showNotification(`Moved ${displayName} to ${targetTier} tier`, 'success');
 }
@@ -1361,35 +1325,35 @@ async function executeVoiceCommand(command) {
 function findFileByName(files, searchName) {
     searchName = searchName.toLowerCase();
     
-    // First priority: Try to match recognition labels (AI-identified names)
+    // first priority: Try to match recognition labels 
     let match = files.find(f => f.recognition && f.recognition.toLowerCase() === searchName);
     if (match) {
         console.log(`[DEBUG] Found file by recognition label: "${match.recognition}" -> ${match.filename}`);
         return match;
     }
     
-    // Second priority: Try partial match with recognition labels
+    // second priority: Try partial match with recognition labels
     match = files.find(f => f.recognition && f.recognition.toLowerCase().includes(searchName));
     if (match) {
         console.log(`[DEBUG] Found file by partial recognition match: "${match.recognition}" contains "${searchName}" -> ${match.filename}`);
         return match;
     }
     
-    // Third priority: Try exact match with original filename
+    // third priority: Try exact match with original filename
     match = files.find(f => f.original_name.toLowerCase() === searchName);
     if (match) {
         console.log(`[DEBUG] Found file by exact filename: "${f.original_name}" -> ${match.filename}`);
         return match;
     }
     
-    // Fourth priority: Try partial match with original filename
+    // fourth priority: Try partial match with original filename
     match = files.find(f => f.original_name.toLowerCase().includes(searchName));
     if (match) {
         console.log(`[DEBUG] Found file by partial filename: "${f.original_name}" contains "${searchName}" -> ${match.filename}`);
         return match;
     }
     
-    // Final fallback: Fuzzy matching with original filename
+    // final fallback: Fuzzy matching with original filename
     match = files.find(f => {
         const fileName = f.original_name.toLowerCase();
         const words = searchName.split(' ');
@@ -1409,18 +1373,14 @@ function moveItemToTier(fileId, targetTierIndex) {
     const file = findFileById(fileId);
     if (!file) return;
     
-    // Remove from current location
     removeFileFromCurrentLocation(fileId);
     
-    // Add to target tier
     tierData[targetTierIndex].files.push(file);
     
-    // Refresh displays
     displayUploadedFiles();
     renderTiers();
 }
 
-// Text command input functions (available for all users)
 function handleVoiceInputKeypress(event) {
     if (event.key === 'Enter') {
         processTextCommand();
@@ -1442,7 +1402,7 @@ function processTextCommand() {
     }
 }
 
-// Image Recognition Functions
+// image Recognition Functions
 async function analyzeImage(imageUrl, filename) {
     if (!imageRecognitionEnabled) {
         console.log(`[DEBUG] Image recognition disabled, skipping: ${filename}`);
@@ -1453,7 +1413,7 @@ async function analyzeImage(imageUrl, filename) {
         console.log(`[DEBUG] Starting AI analysis for: ${filename}`);
         console.log(`[DEBUG] Image URL: ${imageUrl}`);
         
-        // Try multiple approaches for image analysis
+        // try multiple approaches for image analysis
         let recognition = await tryHackClubAPI(imageUrl, filename);
         
         if (!recognition) {
@@ -1472,14 +1432,14 @@ async function analyzeImage(imageUrl, filename) {
             imageUrl: imageUrl
         });
         
-        // Fallback to filename-based recognition
+        // fallback to filename-based recognition
         return getFilenameBasedLabel(filename);
     }
 }
 
 async function tryHackClubAPI(imageUrl, filename) {
     try {
-        // Convert image to base64 for AI API
+        // convert image to base64 for AI API
         console.log(`[DEBUG] Converting image to base64...`);
         const base64Image = await imageToBase64(imageUrl);
         console.log(`[DEBUG] Base64 conversion complete, length: ${base64Image.length}`);
@@ -1499,9 +1459,7 @@ Respond with only ONE word, no explanations or additional text.`;
         const controller = new AbortController();
         const timeoutId = setTimeout(() => controller.abort(), 15000); // 15 second timeout
 
-        // Try different API request formats
         const formats = [
-            // Format 1: OpenAI-style with data URL
             {
                 model: "gpt-4-vision-preview",
                 messages: [
@@ -1521,10 +1479,9 @@ Respond with only ONE word, no explanations or additional text.`;
                         ]
                     }
                 ],
-                max_tokens: 10,
+                max_tokens: 100,
                 temperature: 0.1
             },
-            // Format 2: Simple text with base64 in prompt
             {
                 model: "gpt-4-vision-preview",
                 messages: [
@@ -1533,10 +1490,9 @@ Respond with only ONE word, no explanations or additional text.`;
                         content: `${prompt}\n\nImage data: ${base64Image}`
                     }
                 ],
-                max_tokens: 10,
+                max_tokens: 100,
                 temperature: 0.1
             },
-            // Format 3: Just text analysis (if image fails)
             {
                 messages: [
                     {
@@ -1544,7 +1500,7 @@ Respond with only ONE word, no explanations or additional text.`;
                         content: `Analyze the filename "${filename}" and provide a single word that best describes what type of image it might be. Examples: shop, street, person, food, animal, building, nature, vehicle, document, art. Respond with only ONE word.`
                     }
                 ],
-                max_tokens: 10,
+                max_tokens: 100,
                 temperature: 0.1
             }
         ];
@@ -1569,7 +1525,7 @@ Respond with only ONE word, no explanations or additional text.`;
                     
                     if (data.choices && data.choices[0] && data.choices[0].message) {
                         const recognition = data.choices[0].message.content.trim().toLowerCase();
-                        console.log(`[DEBUG] ✅ Image recognition successful for ${filename}: "${recognition}" (using format ${i + 1})`);
+                        console.log(`[DEBUG] Image recognition successful for ${filename}: "${recognition}" (using format ${i + 1})`);
                         clearTimeout(timeoutId);
                         return recognition;
                     } else {
@@ -1609,7 +1565,7 @@ function getFilenameBasedLabel(filename) {
     
     const name = filename.toLowerCase();
     
-    // Check for common keywords in filename
+    // common word checking
     const patterns = {
         'shop': ['shop', 'store', 'market', 'mall', 'retail'],
         'street': ['street', 'road', 'avenue', 'path', 'sidewalk'],
@@ -1630,7 +1586,6 @@ function getFilenameBasedLabel(filename) {
         }
     }
     
-    // Default fallback based on file extension or random selection
     const defaultLabels = ['image', 'photo', 'picture', 'item'];
     const randomLabel = defaultLabels[Math.floor(Math.random() * defaultLabels.length)];
     console.log(`[DEBUG] No pattern match, using default label "${randomLabel}" for: ${filename}`);
@@ -1646,7 +1601,6 @@ async function imageToBase64(imageUrl) {
             const canvas = document.createElement('canvas');
             const ctx = canvas.getContext('2d');
             
-            // Resize image to reduce API payload size
             const maxSize = 512;
             let { width, height } = img;
             
@@ -1684,14 +1638,12 @@ function addImageRecognitionOverlay(container, recognition) {
     
     console.log(`[DEBUG] Adding recognition overlay: "${recognition}" to container:`, container);
     
-    // Remove existing overlay if present
     const existingOverlay = container.querySelector('.image-recognition-overlay');
     if (existingOverlay) {
         console.log('[DEBUG] Removing existing overlay');
         existingOverlay.remove();
     }
     
-    // Create recognition overlay
     const overlay = document.createElement('div');
     overlay.className = 'image-recognition-overlay absolute bottom-0 left-0 right-0 bg-black bg-opacity-75 text-white text-xs px-2 py-1 rounded-b z-10 pointer-events-none';
     overlay.textContent = `🔍 ${recognition}`;
@@ -1713,14 +1665,14 @@ function toggleImageRecognition() {
         button.classList.add('btn-success');
         showNotification('Image recognition enabled', 'success');
         
-        // Re-analyze all existing images (in upload area and tiers)
+        // re-analyze all existing -- already uploaded
         const allFiles = [...uploadedFiles, ...tierData.flatMap(tier => tier.files)];
         const imageFiles = allFiles.filter(file => !file.is_audio && !file.recognition);
         
         if (imageFiles.length > 0) {
             showNotification(`Analyzing ${imageFiles.length} existing image(s)...`, 'info');
             
-            // Process images sequentially
+            // process images sequentially
             (async () => {
                 for (const file of imageFiles) {
                     try {
@@ -1728,13 +1680,13 @@ function toggleImageRecognition() {
                         if (recognition) {
                             file.recognition = recognition;
                             
-                            // Update the same file in uploadedFiles if it exists there
+                            // update the same file in uploadedFiles if it exists there
                             const uploadedFile = uploadedFiles.find(f => f.filename === file.filename);
                             if (uploadedFile) {
                                 uploadedFile.recognition = recognition;
                             }
                             
-                            // Update the same file in tiers if it exists there
+                            // update the same file in tiers if it exists there
                             tierData.forEach(tier => {
                                 const tierFile = tier.files.find(f => f.filename === file.filename);
                                 if (tierFile) {
@@ -1742,7 +1694,7 @@ function toggleImageRecognition() {
                                 }
                             });
                             
-                            // Update displays in real-time
+                            // update displays in real-time
                             displayUploadedFiles();
                             renderTiers();
                         }
@@ -1758,7 +1710,7 @@ function toggleImageRecognition() {
         button.classList.add('btn-outline');
         showNotification('Image recognition disabled', 'info');
         
-        // Remove recognition data from all files
+        // remove recognition data from all files
         uploadedFiles.forEach(file => {
             delete file.recognition;
         });
@@ -1769,12 +1721,11 @@ function toggleImageRecognition() {
             });
         });
         
-        // Remove all overlays from DOM
         document.querySelectorAll('.image-recognition-overlay').forEach(overlay => {
             overlay.remove();
         });
         
-        // Refresh displays
+        // refresh displays
         displayUploadedFiles();
         renderTiers();
     }

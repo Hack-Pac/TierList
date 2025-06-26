@@ -31,7 +31,7 @@
   @apply border-2 border-dashed border-accent bg-accent/10 rounded-lg;
 }
 
-/* Voice control button animations */
+/* voice control button animations */
 #voice-control-btn.btn-success {
   animation: pulse 2s infinite;
 }
@@ -45,7 +45,7 @@
   }
 }
 
-/* Image recognition overlay styling */
+/* image recognition overlay styling */
 .image-recognition-overlay {
   font-size: 0.75rem;
   font-weight: 700;
@@ -77,7 +77,7 @@
   transition: transform 0.2s ease;
 }
 
-/* Firefox voice fallback styling */
+/* firefox voice fallback styling */
 #firefox-voice-fallback {
   backdrop-filter: blur(10px);
   border: 1px solid rgba(var(--bc), 0.2);
