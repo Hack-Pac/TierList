@@ -1430,8 +1430,6 @@ async function tryHackClubAPI(imageUrl, filename) {
 - If it's a person: "person"
 - If it's food: "food"
 - If it's an animal: "animal"
-- If it's a building: "building"
-- If it's nature/landscape: "nature"
 - If it's a vehicle: "vehicle"
 - If it's text/document: "document"
 - If it's art/drawing: "art"
