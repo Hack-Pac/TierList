@@ -860,7 +860,19 @@ function setupAnnyangVoiceControl() {
         const tierLabels = tierData.map(t => t.label.toLowerCase());
         const allFiles = [...uploadedFiles, ...tierData.flatMap(t => t.files)];
         
-        // Create dynamic patterns for each tier
+        // Create specific commands for recognition labels (AI-identified items)
+        allFiles.forEach(file => {
+            if (file.recognition) {
+                const recognition = file.recognition.toLowerCase();
+                tierLabels.forEach(tier => {
+                    commands[`move ${recognition} to ${tier} tier`] = () => processVoiceMove(recognition, tier);
+                    commands[`put ${recognition} in ${tier} tier`] = () => processVoiceMove(recognition, tier);
+                    commands[`${recognition} goes to ${tier} tier`] = () => processVoiceMove(recognition, tier);
+                });
+            }
+        });
+        
+        // Create dynamic patterns for each tier (general patterns)
         tierLabels.forEach(tier => {
             // Multiple patterns for natural language
             commands[`move * to ${tier} tier`] = (item) => processVoiceMove(item, tier);
@@ -874,6 +886,8 @@ function setupAnnyangVoiceControl() {
         commands['move * to * tier'] = (item, tier) => processVoiceMove(item, tier);
         commands['put * in * tier'] = (item, tier) => processVoiceMove(item, tier);
         commands['* goes to * tier'] = (item, tier) => processVoiceMove(item, tier);
+        
+        console.log('[DEBUG] Updated Annyang commands with recognition labels:', Object.keys(commands).filter(cmd => !cmd.includes('*')));
         
         annyang.removeCommands();
         annyang.addCommands(commands);
@@ -1017,7 +1031,10 @@ function processVoiceMove(item, tier) {
         }
 
         moveItemToTier(file.filename, targetTierIndex);
-        showNotification(`Moved "${file.original_name}" to ${tier.toUpperCase()} tier`, 'success');
+        
+        // Show success message with recognition label if available
+        const displayName = file.recognition ? `"${file.recognition}" (${file.original_name})` : `"${file.original_name}"`;
+        showNotification(`Moved ${displayName} to ${tier.toUpperCase()} tier`, 'success');
         isProcessingVoiceCommand = false;
     }
 }
@@ -1156,19 +1173,29 @@ async function parseVoiceCommandWithAI(transcript) {
             // Get current tier labels and uploaded files for context
             const tierLabels = tierData.map(t => t.label);
             const allFiles = [...uploadedFiles, ...tierData.flatMap(t => t.files)];
-            const allFileNames = allFiles.map(f => f.original_name);
+            
+            // Create a list of file identifiers prioritizing recognition labels
+            const fileIdentifiers = allFiles.map(f => {
+                if (f.recognition) {
+                    return `"${f.recognition}" (AI-identified as ${f.recognition}, filename: ${f.original_name})`;
+                } else {
+                    return `"${f.original_name}" (filename: ${f.original_name})`;
+                }
+            });
 
             const prompt = `You are a voice command parser for a tier list application. Parse the following voice command and extract the action, item name, and target tier.
 
 Available tier labels: ${tierLabels.join(', ')}
-Available files: ${allFileNames.join(', ')}
+Available files and their identifiers: ${fileIdentifiers.join(', ')}
 
 Voice command: "${transcript}"
+
+IMPORTANT: Users can refer to files by their AI-identified labels (like "nature", "person", "food") OR by their original filenames. Always prefer the AI-identified labels when available.
 
 Please respond with a JSON object in this exact format:
 {
   "action": "move", 
-  "itemName": "exact file name from available files",
+  "itemName": "the identifier the user referred to (recognition label or filename)",
   "targetTier": "exact tier label from available tiers"
 }
 
@@ -1177,6 +1204,11 @@ Only respond if the command is clearly asking to move an item to a tier. Common 
 - "Put [item] in [tier] tier" 
 - "Let's move [item] into [tier] tier"
 - "[item] should go to [tier] tier"
+
+Examples:
+- If user says "Move nature to S tier" and there's a file identified as "nature", use itemName: "nature"
+- If user says "Move cat photo to A tier" and there's a file identified as "animal", use itemName: "animal"
+- If user says "Move document.pdf to B tier", use itemName: "document.pdf"
 
 For fuzzy matching:
 - If the user says "cat", match files like "cat_photo.jpg" or "cute_cat.png"
@@ -1280,7 +1312,7 @@ function parseVoiceCommandSimple(transcript) {
                 if (file) {
                     return {
                         action: 'move',
-                        itemName: file.original_name,
+                        itemName: itemName, // Use the search term, not the filename
                         targetTier: tierName.toUpperCase()
                     };
                 }
@@ -1321,26 +1353,54 @@ async function executeVoiceCommand(command) {
     // Execute the move
     moveItemToTier(file.filename, targetTierIndex);
     
-    showNotification(`Moved "${file.original_name}" to ${targetTier} tier`, 'success');
+    // Show success message with recognition label if available
+    const displayName = file.recognition ? `"${file.recognition}" (${file.original_name})` : `"${file.original_name}"`;
+    showNotification(`Moved ${displayName} to ${targetTier} tier`, 'success');
 }
 
 function findFileByName(files, searchName) {
     searchName = searchName.toLowerCase();
     
-    // First try exact match
-    let match = files.find(f => f.original_name.toLowerCase() === searchName);
-    if (match) return match;
+    // First priority: Try to match recognition labels (AI-identified names)
+    let match = files.find(f => f.recognition && f.recognition.toLowerCase() === searchName);
+    if (match) {
+        console.log(`[DEBUG] Found file by recognition label: "${match.recognition}" -> ${match.filename}`);
+        return match;
+    }
     
-    // Then try partial match
+    // Second priority: Try partial match with recognition labels
+    match = files.find(f => f.recognition && f.recognition.toLowerCase().includes(searchName));
+    if (match) {
+        console.log(`[DEBUG] Found file by partial recognition match: "${match.recognition}" contains "${searchName}" -> ${match.filename}`);
+        return match;
+    }
+    
+    // Third priority: Try exact match with original filename
+    match = files.find(f => f.original_name.toLowerCase() === searchName);
+    if (match) {
+        console.log(`[DEBUG] Found file by exact filename: "${f.original_name}" -> ${match.filename}`);
+        return match;
+    }
+    
+    // Fourth priority: Try partial match with original filename
     match = files.find(f => f.original_name.toLowerCase().includes(searchName));
-    if (match) return match;
+    if (match) {
+        console.log(`[DEBUG] Found file by partial filename: "${f.original_name}" contains "${searchName}" -> ${match.filename}`);
+        return match;
+    }
     
-    // Finally try fuzzy matching (check if search name is contained in file name)
+    // Final fallback: Fuzzy matching with original filename
     match = files.find(f => {
         const fileName = f.original_name.toLowerCase();
         const words = searchName.split(' ');
         return words.every(word => fileName.includes(word));
     });
+    
+    if (match) {
+        console.log(`[DEBUG] Found file by fuzzy filename match: "${match.original_name}" -> ${match.filename}`);
+    } else {
+        console.log(`[DEBUG] No file found for search: "${searchName}"`);
+    }
     
     return match;
 }
