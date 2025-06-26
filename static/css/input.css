@@ -24,46 +24,7 @@
 }
 .upload-zone.drag-over {
   @apply border-primary bg-primary/10;
-}
-
-/* lofi music button styles */
-#lofi-btn.btn-active {
-  @apply bg-primary text-primary-content;
-  animation: pulse 2s infinite;
-}
-
-@keyframes pulse {
-  0%, 100% {
-    opacity: 1;
-  }
-  50% {
-    opacity: 0.7;
-  }
-}
-
-/* print button hover effect */
-#print-btn:hover {
-  @apply transform scale-105;
-  transition: transform 0.2s ease;
 } 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 
 
 

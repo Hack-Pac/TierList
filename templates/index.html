@@ -5,33 +5,6 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Tier List Maker</title>
     <link href="{{ url_for('static', filename='css/output.css') }}" rel="stylesheet">
-    <style>
-        /* print styles */
-        @media print {
-            body * {
-                visibility: hidden;
-            }
-            #tier-list, #tier-list * {
-                visibility: visible;
-            }
-            #tier-list {
-                position: absolute;
-                left: 0;
-                top: 0;
-                width: 100% !important;
-            }
-            .card {
-                break-inside: avoid;
-                margin-bottom: 1rem;
-            }
-            .tier-container {
-                border: 2px solid #000 !important;
-            }
-            .badge {
-                border: 1px solid #000 !important;
-            }
-        }
-    </style>
 </head>
 <body class="min-h-screen bg-base-100">
     <!-- header with theme toggle -->
@@ -71,6 +44,7 @@
                         <div>
                             <p class="text-lg font-medium">Drop media files here or click to browse</p>
                             <p class="text-sm text-base-content/70">Supports PNG, JPG, GIF, MP3, WAV, OGG, M4A, AAC up to 5MB each</p>
+                            <p class="text-xs text-accent mt-2">💡 Tip: You can also drag items back here from tiers</p>
                         </div>
                         <button id="browse-btn" class="btn btn-primary">Browse Files</button>
                     </div>
@@ -101,7 +75,6 @@
                     <div class="flex gap-2">
                         <button id="import-btn" class="btn btn-accent">📂 Import Tier List</button>
                         <button id="save-btn" class="btn btn-secondary">💾 Save Tier List</button>
-                        <button id="print-btn" class="btn btn-info">🖨️ Print Tier List</button>
                     </div>
                     <input type="file" id="import-input" accept=".json" class="hidden">
                 </div>
