@@ -317,7 +317,8 @@ function setupTierControls() {
     const importBtn = document.getElementById('import-btn');
     const importInput = document.getElementById('import-input');
     const imageRecognitionBtn = document.getElementById('image-recognition-btn');
-    
+    const printBtn = document.getElementById('print-btn');
+
     slider.addEventListener('input', (e) => {
         const count = parseInt(e.target.value);
         countDisplay.textContent = count;
@@ -327,7 +328,8 @@ function setupTierControls() {
     saveBtn.addEventListener('click', saveTierList);
     importBtn.addEventListener('click', () => importInput.click());
     importInput.addEventListener('change', handleImportFile);
-    
+    printBtn.addEventListener('click', printTierList);
+
     if (imageRecognitionBtn) {
         imageRecognitionBtn.addEventListener('click', toggleImageRecognition);
     }
@@ -1892,20 +1894,4 @@ function generatePrintableHTML() {
         </body>
                  </html>
      `;
-}
-
-//placeholder functions for image recognition (disabled by default)
-function analyzeImage(imageUrl, filename) {
-    //image recognition is disabled - return null
-    return Promise.resolve(null);
-}
-
-function addImageRecognitionOverlay(container, recognition) {
-    //add recognition overlay to image container
-    const overlay = document.createElement('div');
-    overlay.className = 'image-recognition-overlay absolute bottom-0 left-0 right-0 bg-black bg-opacity-75 text-white text-xs px-1 py-0.5 rounded-b z-10 pointer-events-none';
-    overlay.style.fontWeight = 'bold';
-    overlay.style.textShadow = '1px 1px 2px rgba(0,0,0,0.8)';
-    overlay.textContent = `🔍 ${recognition}`;
-    container.appendChild(overlay);
 }

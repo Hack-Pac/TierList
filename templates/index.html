@@ -21,6 +21,10 @@
             <h1 class="text-2xl font-bold text-primary">🏆 Tier List Maker</h1>
         </div>
         <div class="navbar-end">
+            <!-- lofi music button -->
+            <button id="lofi-btn" class="btn btn-ghost btn-circle mr-2" title="Toggle Lofi Music">
+                <span id="lofi-icon">🎵</span>
+            </button>
             <!-- print button -->
             <button id="print-btn" class="btn btn-ghost btn-circle mr-2" title="Print Tier List">
                 <span>🖨️</span>
@@ -86,6 +90,7 @@
                             <button id="voice-control-btn" onclick="toggleVoiceControl()" class="btn btn-accent" title="Toggle voice control">🎤 Voice Control</button>
                             <button id="import-btn" class="btn btn-accent">📂 Import Tier List</button>
                             <button id="save-btn" class="btn btn-secondary">💾 Save Tier List</button>
+                            <button id="print-btn" class="btn btn-info">🖨️ Print Tier List</button>
                         </div>
                         <div class="flex gap-2 mt-2">
                             <input type="text" id="voice-command-input" placeholder="Type: Move item to S tier" 
