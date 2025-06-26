@@ -11,6 +11,9 @@ let isProcessingVoiceCommand = false;
 let currentBrowser = null;
 let speechKittReady = false;
 
+// Image recognition state
+let imageRecognitionEnabled = true;
+
 // Browser detection
 function detectBrowser() {
     const userAgent = navigator.userAgent.toLowerCase();
@@ -127,6 +130,7 @@ function handleFileSelect(e) {
 }
 
 function uploadFiles(files) {
+    console.log(`[DEBUG] uploadFiles called with ${files.length} files`);
     const formData = new FormData();
     
     //validate files before upload
@@ -148,13 +152,60 @@ function uploadFiles(files) {
         body: formData
     })
     .then(response => response.json())
-    .then(data => {
+    .then(async (data) => {
+        console.log(`[DEBUG] Upload response received:`, data);
         if (data.error) {
             showNotification(data.error, 'error');
         } else {
+            console.log(`[DEBUG] Adding ${data.files.length} files to uploadedFiles`);
             uploadedFiles = [...uploadedFiles, ...data.files];
+            
+            // Show uploaded files immediately
             displayUploadedFiles();
-            showNotification(`Successfully uploaded ${data.files.length} file(s)!`, 'success');
+            
+            console.log(`[DEBUG] Image recognition enabled: ${imageRecognitionEnabled}`);
+            console.log(`[DEBUG] Uploaded files:`, data.files);
+            
+            // Analyze uploaded images with AI recognition
+            if (imageRecognitionEnabled) {
+                const imageFiles = data.files.filter(file => !file.is_audio);
+                console.log(`[DEBUG] Image recognition enabled. Found ${imageFiles.length} image files to analyze:`, imageFiles.map(f => f.filename));
+                console.log(`[DEBUG] All files with is_audio property:`, data.files.map(f => ({ filename: f.filename, is_audio: f.is_audio })));
+                
+                if (imageFiles.length > 0) {
+                    showNotification(`Analyzing ${imageFiles.length} image(s)...`, 'info');
+                    
+                    // Analyze images sequentially to avoid overwhelming the API
+                    for (const file of imageFiles) {
+                        try {
+                            console.log(`[DEBUG] Analyzing file: ${file.filename}`);
+                            const recognition = await analyzeImage(file.url, file.filename);
+                            if (recognition) {
+                                console.log(`[DEBUG] Setting recognition "${recognition}" for file: ${file.filename}`);
+                                file.recognition = recognition;
+                                // Find the file in uploadedFiles and update it
+                                const uploadedFile = uploadedFiles.find(f => f.filename === file.filename);
+                                if (uploadedFile) {
+                                    uploadedFile.recognition = recognition;
+                                    console.log(`[DEBUG] Updated uploadedFile with recognition: ${uploadedFile.filename} -> ${uploadedFile.recognition}`);
+                                }
+                                // Update display after each analysis for real-time feedback
+                                displayUploadedFiles();
+                            } else {
+                                console.log(`[DEBUG] No recognition result for file: ${file.filename}`);
+                            }
+                        } catch (error) {
+                            console.error(`[DEBUG] Failed to analyze ${file.filename}:`, error);
+                        }
+                    }
+                    
+                    showNotification(`Successfully uploaded and analyzed ${data.files.length} file(s)!`, 'success');
+                } else {
+                    showNotification(`Successfully uploaded ${data.files.length} file(s)!`, 'success');
+                }
+            } else {
+                showNotification(`Successfully uploaded ${data.files.length} file(s)!`, 'success');
+            }
         }
     })
     .catch(error => {
@@ -181,6 +232,12 @@ function validateFile(file) {
 function displayUploadedFiles() {
     const preview = document.getElementById('upload-preview');
     preview.innerHTML = '';
+    
+    console.log(`[DEBUG] Displaying ${uploadedFiles.length} uploaded files`);
+    uploadedFiles.forEach((file, index) => {
+        console.log(`[DEBUG] File ${index}: ${file.filename}, recognition: ${file.recognition}`);
+    });
+    
     if (uploadedFiles.length === 0) {
         preview.classList.add('hidden');
         return;
@@ -218,13 +275,21 @@ function createDraggableFile(file) {
     } else {
         container.innerHTML = `
             <img src="${file.url}" alt="${file.original_name}" 
-                 class="w-full h-20 object-cover rounded border-2 border-base-300 group-hover:border-primary">
+                 class="max-w-full max-h-32 object-contain rounded border-2 border-base-300 group-hover:border-primary">
             <div class="absolute inset-0 bg-black bg-opacity-0 group-hover:bg-opacity-20 rounded transition-all"></div>
             <div class="absolute top-1 right-1 opacity-0 group-hover:opacity-100 transition-opacity">
                 <button onclick="removeFile('${file.filename}')" 
                         class="btn btn-xs btn-circle btn-error">✕</button>
             </div>
         `;
+        
+        // Add image recognition overlay if available
+        if (file.recognition && imageRecognitionEnabled) {
+            console.log(`[DEBUG] Adding overlay for file: ${file.filename}, recognition: ${file.recognition}`);
+            addImageRecognitionOverlay(container, file.recognition);
+        } else {
+            console.log(`[DEBUG] No overlay for file: ${file.filename}, recognition: ${file.recognition}, enabled: ${imageRecognitionEnabled}`);
+        }
     }
     
     //drag events
@@ -248,6 +313,7 @@ function setupTierControls() {
     const saveBtn = document.getElementById('save-btn');
     const importBtn = document.getElementById('import-btn');
     const importInput = document.getElementById('import-input');
+    const imageRecognitionBtn = document.getElementById('image-recognition-btn');
     
     slider.addEventListener('input', (e) => {
         const count = parseInt(e.target.value);
@@ -258,6 +324,10 @@ function setupTierControls() {
     saveBtn.addEventListener('click', saveTierList);
     importBtn.addEventListener('click', () => importInput.click());
     importInput.addEventListener('change', handleImportFile);
+    
+    if (imageRecognitionBtn) {
+        imageRecognitionBtn.addEventListener('click', toggleImageRecognition);
+    }
 }
 function generateDefaultTiers() {
     const count = 5;
@@ -314,7 +384,7 @@ function createTierElement(tier, index) {
                     </div>
                 </div>
                 <!-- tier items container -->
-                <div class="tier-container flex-1 min-h-[100px] border-2 border-dashed border-base-300 rounded-lg p-4 flex flex-wrap gap-2"
+                <div class="tier-container flex-1 min-h-[80px] border-2 border-dashed border-base-300 rounded-lg p-3 flex flex-wrap gap-2"
                      data-tier-id="${tier.id}" 
                      ondrop="handleTierDrop(event, ${index})" 
                      ondragover="handleTierDragOver(event)"
@@ -350,6 +420,12 @@ function createTierFileHTML(file) {
             </div>
         `;
     } else {
+        const recognitionOverlay = (file.recognition && imageRecognitionEnabled) 
+            ? `<div class="image-recognition-overlay absolute bottom-0 left-0 right-0 bg-black bg-opacity-75 text-white text-xs px-1 py-0.5 rounded-b z-10 pointer-events-none" style="font-weight: bold; text-shadow: 1px 1px 2px rgba(0,0,0,0.8);">🔍 ${file.recognition}</div>`
+            : '';
+            
+        console.log(`[DEBUG] Creating tier file HTML for: ${file.filename}, recognition: ${file.recognition}, overlay: ${recognitionOverlay ? 'YES' : 'NO'}`);
+            
         return `
             <div class="tier-item relative group cursor-move" 
                  draggable="true" 
@@ -357,9 +433,10 @@ function createTierFileHTML(file) {
                  onmousedown="handleFileDragStart(event)"
                  onmouseup="handleFileDragEnd(event)">
                 <img src="${file.url}" alt="${file.original_name}" 
-                     class="w-16 h-16 object-cover rounded border border-base-300">
+                     class="h-16 w-auto object-contain rounded border border-base-300">
+                ${recognitionOverlay}
                 <!-- Delete button -->
-                <div class="absolute -top-1 -right-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                <div class="absolute -top-1 -right-1 opacity-0 group-hover:opacity-100 transition-opacity z-20">
                     <button onclick="removeFile('${file.filename}')" 
                             class="btn btn-xs btn-circle btn-error" 
                             title="Delete file">✕</button>
@@ -720,6 +797,7 @@ function setupFirefoxFallback() {
 // Global functions for Firefox fallback (accessible from HTML)
 window.processFirefoxTextCommand = processFirefoxTextCommand;
 window.showFirefoxInstructions = showFirefoxInstructions;
+window.toggleImageRecognition = toggleImageRecognition;
 
 function processFirefoxTextCommand() {
     const input = document.getElementById('firefox-voice-input');
@@ -1117,7 +1195,7 @@ If the command is not clear or doesn't match these patterns, respond with: {"act
                             content: prompt
                         }
                     ],
-                    max_tokens: 150,
+                    max_tokens: 1000,
                     temperature: 0.1 // Lower temperature for more consistent parsing
                 }),
                 signal: controller.signal
@@ -1300,11 +1378,243 @@ function processTextCommand() {
     }
 }
 
-// Global functions accessible from HTML
-window.handleVoiceInputKeypress = handleVoiceInputKeypress;
-window.processTextCommand = processTextCommand;
-window.processFirefoxTextCommand = processFirefoxTextCommand;
-window.showFirefoxInstructions = showFirefoxInstructions;
+// Image Recognition Functions
+async function analyzeImage(imageUrl, filename) {
+    if (!imageRecognitionEnabled) {
+        console.log(`[DEBUG] Image recognition disabled, skipping: ${filename}`);
+        return null;
+    }
+    
+    try {
+        console.log(`[DEBUG] Starting AI analysis for: ${filename}`);
+        console.log(`[DEBUG] Image URL: ${imageUrl}`);
+        
+        // Convert image to base64 for AI API
+        console.log(`[DEBUG] Converting image to base64...`);
+        const base64Image = await imageToBase64(imageUrl);
+        console.log(`[DEBUG] Base64 conversion complete, length: ${base64Image.length}`);
+        
+        const prompt = `Analyze this image and provide a single word that best describes what it shows. Examples:
+- If it's a store/shop: "shop"
+- If it's a street/road: "street" 
+- If it's a person: "person"
+- If it's food: "food"
+- If it's an animal: "animal"
+- If it's a building: "building"
+- If it's nature/landscape: "nature"
+- If it's a vehicle: "vehicle"
+- If it's text/document: "document"
+- If it's art/drawing: "art"
+
+Respond with only ONE word, no explanations or additional text.`;
+
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), 15000); // 15 second timeout
+
+        console.log(`[DEBUG] Sending request to AI API...`);
+        const response = await fetch('https://ai.hackclub.com/chat/completions', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+                messages: [
+                    {
+                        role: 'user',
+                        content: [
+                            {
+                                type: 'text',
+                                text: prompt
+                            },
+                            {
+                                type: 'image_url',
+                                image_url: {
+                                    url: base64Image
+                                }
+                            }
+                        ]
+                    }
+                ],
+                max_tokens: 10,
+                temperature: 0.1
+            }),
+            signal: controller.signal
+        });
+
+        clearTimeout(timeoutId);
+
+        console.log(`[DEBUG] AI API response status: ${response.status}`);
+        if (!response.ok) {
+            throw new Error(`AI API request failed: ${response.status}`);
+        }
+
+        const data = await response.json();
+        console.log(`[DEBUG] AI API response data:`, data);
+        
+        if (!data.choices || !data.choices[0] || !data.choices[0].message) {
+            throw new Error('Invalid response format from AI API');
+        }
+        
+        const recognition = data.choices[0].message.content.trim().toLowerCase();
+        console.log(`[DEBUG] Image recognition result for ${filename}: "${recognition}"`);
+        console.log(`[DEBUG] Recognition successful for: ${filename}`);
+        
+        return recognition;
+        
+    } catch (error) {
+        console.error(`[DEBUG] Error analyzing image ${filename}:`, error);
+        console.error(`[DEBUG] Full error details:`, {
+            message: error.message,
+            stack: error.stack,
+            filename: filename,
+            imageUrl: imageUrl
+        });
+        return null;
+    }
+}
+
+async function imageToBase64(imageUrl) {
+    return new Promise((resolve, reject) => {
+        const img = new Image();
+        img.crossOrigin = 'anonymous';
+        
+        img.onload = function() {
+            const canvas = document.createElement('canvas');
+            const ctx = canvas.getContext('2d');
+            
+            // Resize image to reduce API payload size
+            const maxSize = 512;
+            let { width, height } = img;
+            
+            if (width > height) {
+                if (width > maxSize) {
+                    height = (height * maxSize) / width;
+                    width = maxSize;
+                }
+            } else {
+                if (height > maxSize) {
+                    width = (width * maxSize) / height;
+                    height = maxSize;
+                }
+            }
+            
+            canvas.width = width;
+            canvas.height = height;
+            
+            ctx.drawImage(img, 0, 0, width, height);
+            
+            const base64 = canvas.toDataURL('image/jpeg', 0.8);
+            resolve(base64);
+        };
+        
+        img.onerror = () => reject(new Error('Failed to load image'));
+        img.src = imageUrl;
+    });
+}
+
+function addImageRecognitionOverlay(container, recognition) {
+    if (!recognition) {
+        console.log('[DEBUG] No recognition data provided to addImageRecognitionOverlay');
+        return;
+    }
+    
+    console.log(`[DEBUG] Adding recognition overlay: "${recognition}" to container:`, container);
+    
+    // Remove existing overlay if present
+    const existingOverlay = container.querySelector('.image-recognition-overlay');
+    if (existingOverlay) {
+        console.log('[DEBUG] Removing existing overlay');
+        existingOverlay.remove();
+    }
+    
+    // Create recognition overlay
+    const overlay = document.createElement('div');
+    overlay.className = 'image-recognition-overlay absolute bottom-0 left-0 right-0 bg-black bg-opacity-75 text-white text-xs px-2 py-1 rounded-b z-10 pointer-events-none';
+    overlay.textContent = `🔍 ${recognition}`;
+    overlay.style.fontWeight = 'bold';
+    overlay.style.textShadow = '1px 1px 2px rgba(0,0,0,0.8)';
+    
+    console.log(`[DEBUG] Created overlay element:`, overlay);
+    
+    container.appendChild(overlay);
+    console.log(`[DEBUG] Overlay appended to container. Container children count:`, container.children.length);
+}
+
+function toggleImageRecognition() {
+    imageRecognitionEnabled = !imageRecognitionEnabled;
+    const button = document.getElementById('image-recognition-btn');
+    
+    if (imageRecognitionEnabled) {
+        button.classList.remove('btn-outline');
+        button.classList.add('btn-success');
+        showNotification('Image recognition enabled', 'success');
+        
+        // Re-analyze all existing images (in upload area and tiers)
+        const allFiles = [...uploadedFiles, ...tierData.flatMap(tier => tier.files)];
+        const imageFiles = allFiles.filter(file => !file.is_audio && !file.recognition);
+        
+        if (imageFiles.length > 0) {
+            showNotification(`Analyzing ${imageFiles.length} existing image(s)...`, 'info');
+            
+            // Process images sequentially
+            (async () => {
+                for (const file of imageFiles) {
+                    try {
+                        const recognition = await analyzeImage(file.url, file.filename);
+                        if (recognition) {
+                            file.recognition = recognition;
+                            
+                            // Update the same file in uploadedFiles if it exists there
+                            const uploadedFile = uploadedFiles.find(f => f.filename === file.filename);
+                            if (uploadedFile) {
+                                uploadedFile.recognition = recognition;
+                            }
+                            
+                            // Update the same file in tiers if it exists there
+                            tierData.forEach(tier => {
+                                const tierFile = tier.files.find(f => f.filename === file.filename);
+                                if (tierFile) {
+                                    tierFile.recognition = recognition;
+                                }
+                            });
+                            
+                            // Update displays in real-time
+                            displayUploadedFiles();
+                            renderTiers();
+                        }
+                    } catch (error) {
+                        console.error(`Failed to analyze ${file.filename}:`, error);
+                    }
+                }
+                showNotification('Existing images analyzed!', 'success');
+            })();
+        }
+    } else {
+        button.classList.remove('btn-success');
+        button.classList.add('btn-outline');
+        showNotification('Image recognition disabled', 'info');
+        
+        // Remove recognition data from all files
+        uploadedFiles.forEach(file => {
+            delete file.recognition;
+        });
+        
+        tierData.forEach(tier => {
+            tier.files.forEach(file => {
+                delete file.recognition;
+            });
+        });
+        
+        // Remove all overlays from DOM
+        document.querySelectorAll('.image-recognition-overlay').forEach(overlay => {
+            overlay.remove();
+        });
+        
+        // Refresh displays
+        displayUploadedFiles();
+        renderTiers();
+    }
+}
 
 
 

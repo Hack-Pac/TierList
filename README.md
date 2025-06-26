@@ -8,6 +8,7 @@ A modern web application for creating interactive tier lists with drag-and-drop 
 - **📁 Multi-Format Support**: Upload PNG, JPG, GIF images and MP3, WAV, OGG, M4A, AAC audio files up to 5MB each
 - **🎯 Intuitive Drag & Drop**: Seamless drag-and-drop interface for organizing items between tiers and upload area
 - **⚙️ Flexible Tier System**: Customize tier count (3-8 tiers) and edit tier labels inline
+- **🔍 AI Image Recognition**: Automatic image analysis with smart content labeling (shop, street, person, etc.)
 - **🎤 Advanced Voice Control**: Multi-platform AI-powered voice commands with cross-browser compatibility
 - **🤖 AI Command Processing**: Smart voice command parsing using Hack Club AI API
 - **⌨️ Text Command Fallback**: Type commands when voice recognition isn't available
@@ -37,6 +38,13 @@ A modern web application for creating interactive tier lists with drag-and-drop 
 - **SpeechKITT** for improved voice control UI feedback
 - **Hack Club AI API** for intelligent voice command parsing
 - **Text Input Fallback** for unsupported browsers/platforms
+
+### AI Vision System
+- **Hack Club AI API** with vision capabilities for image recognition
+- **Automatic Content Detection** for uploaded images
+- **Smart Labeling** with single-word descriptions (shop, street, person, etc.)
+- **Real-time Analysis** during file upload process
+- **Toggle Control** to enable/disable recognition features
 
 ### Performance & Production
 - **Gzip Compression** for all responses
@@ -677,25 +685,39 @@ Firefox requires manual activation of experimental speech features:
    - Supports images (PNG, JPG, GIF) and audio (MP3, WAV, OGG, M4A, AAC)
    - Maximum 5MB per file
    - Files appear in the upload area as thumbnails
+   - **AI Recognition**: Images are automatically analyzed and labeled (when enabled)
 
-2. **Organize Your Tiers**:
+2. **AI Image Recognition** (Optional):
+   - Click the 🔍 **AI Vision** button to toggle automatic image recognition
+   - Uploaded images get analyzed and labeled with content descriptions
+   - Labels appear as overlays on images (e.g., "shop", "street", "person", "food")
+   - Helps organize and identify content in your tier lists
+
+3. **Organize Your Tiers**:
    - **Drag & Drop**: Click and drag items between tiers and upload area
    - **Tier Management**: Use the slider to adjust tier count (3-8 tiers)
    - **Label Editing**: Click tier labels to rename them
    - **Return Items**: Drag items back to upload area to remove from tiers
 
-3. **Voice Control** (Optional):
+4. **Voice Control** (Optional):
    - Click the 🎤 **Voice Control** button
    - Grant microphone permission when prompted
    - Say commands like: *"Move cat picture to S tier"*
    - Or use text input: Type commands and press Enter
 
-4. **Save Your Work**:
+5. **Save Your Work**:
    - Click **💾 Save Tier List** to download as JSON
    - Click **📂 Import Tier List** to load previously saved lists
    - All media files and tier arrangements are preserved
 
 ### Advanced Features
+
+#### AI Image Recognition
+- **Automatic Analysis**: Images are analyzed when uploaded (if enabled)
+- **Smart Labeling**: Single-word descriptions identify content (shop, street, person, food, etc.)
+- **Visual Overlays**: Recognition results appear as small badges on images
+- **Toggle Control**: Enable/disable with the 🔍 AI Vision button
+- **Performance**: Uses Hack Club AI API for accurate content detection
 
 #### Voice Commands
 - **Natural Language**: *"Put the dog photo in A tier"*
@@ -802,6 +824,23 @@ A: Yes on Chrome mobile, limited on Safari mobile. Text input works on all mobil
 
 **Q: How accurate is voice recognition?**
 A: Very accurate for clear speech in quiet environments. The AI system handles partial matches and synonyms well.
+
+### AI Image Recognition
+
+**Q: How does image recognition work?**
+A: The app uses Hack Club's AI API to analyze uploaded images and provide single-word content descriptions like "shop", "street", or "person".
+
+**Q: Can I turn off image recognition?**
+A: Yes! Click the 🔍 AI Vision button to toggle image recognition on/off. When disabled, no images are analyzed.
+
+**Q: What types of content can be recognized?**
+A: Common categories include: shop, street, person, food, animal, building, nature, vehicle, document, art, and more.
+
+**Q: Is image recognition accurate?**
+A: Generally very accurate for common objects and scenes. Results may vary with unusual or abstract images.
+
+**Q: Does image recognition cost extra?**
+A: No, it uses the same free Hack Club AI API. However, it does require an internet connection.
 
 ### Technical Questions
 
