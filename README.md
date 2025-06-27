@@ -1,114 +1,283 @@
-# 🏆 Tier List Maker
+# Interactive Tier List Maker
 
-A modern web application for creating interactive tier lists with drag-and-drop functionality and robust voice control. Built with Flask, Tailwind CSS, and DaisyUI.
+TierList is a functional redesigned tier-list maker, optimized for activities with friends. It is fully deployed and brings multiple relevant features, such as image recognition, voice control, in-app music, and 3 unique themes. TierList also allows people to import and export existing ones, bringing versatility and compatibility, unlike widely available paid tools.
 
-## 🌟 Features
+## Overview
 
-- **🎨 Beautiful UI**: Modern design with DaisyUI components and three themes (Coffee, Dark, Light)
-- **📁 Multi-Format Support**: Upload PNG, JPG, GIF images and MP3, WAV, OGG, M4A, AAC audio files up to 5MB each
-- **🎯 Intuitive Drag & Drop**: Seamless drag-and-drop interface for organizing items between tiers and upload area
-- **⚙️ Flexible Tier System**: Customize tier count (3-8 tiers) and edit tier labels inline
-- **🔍 AI Image Recognition**: Automatic image analysis with smart content labeling (shop, street, person, etc.)
-- **🎤 Advanced Voice Control**: Multi-platform AI-powered voice commands with cross-browser compatibility
-- **🤖 AI Command Processing**: Smart voice command parsing using Hack Club AI API
-- **⌨️ Text Command Fallback**: Type commands when voice recognition isn't available
-- **🦊 Firefox Support**: Specialized support with experimental speech recognition and text fallback
-- **� Import/Export**: Save tier lists as JSON files and reimport them with full media restoration
-- **�📱 Responsive Design**: Optimized for desktop, tablet, and mobile devices
-- **⚡ Performance Optimized**: Caching, compression, and production-ready deployment
+This application addresses the common need for ranking and categorizing items in a visual, interactive format. Whether you're ranking video games, comparing restaurants, evaluating products, or organizing any collection of items, this tier list maker provides an intuitive interface with powerful automation features.
 
-## 🛠 Technology Stack
+The application stands out through its integration of artificial intelligence for both voice command processing and automatic image recognition, making it accessible and efficient for users across different interaction preferences and accessibility needs.
 
-### Backend
-- **Python 3.11+** with Flask web framework
-- **Gunicorn** WSGI server for production deployment
-- **Redis** caching for production (simple cache for development)
-- **File System** storage with unique filename generation
+## Key Features
 
-### Frontend
-- **HTML5** with semantic markup and accessibility features
-- **Vanilla JavaScript** (ES6+) for all client-side functionality
-- **Tailwind CSS 3.4+** with JIT mode for styling
-- **DaisyUI 5.0** component library with theme support
+### Core Functionality
+- **Multi-format media support**: Handles both images (PNG, JPG, GIF) and audio files (MP3, WAV, OGG, M4A, AAC) up to 5MB each. Please note that audio files will not be processed through the AI
+- **Flexible tier system**: Customizable tier count from 3 to 8 levels with editable tier labels
+- **Drag-and-drop interface**: Seamless item organization between tiers and upload area
+- **Import/export capabilities**: Save tier lists as JSON files for backup and sharing
+- **Responsive design**: Optimized for desktop, tablet, and mobile devices
 
-### Voice Recognition Stack
-- **Native Web Speech API** (Chrome, Edge, Safari)
-- **Annyang.js 2.6+** for enhanced pattern matching and callbacks
-- **Mozilla SpeakToMe** polyfill for experimental Firefox support
-- **SpeechKITT** for improved voice control UI feedback
-- **Hack Club AI API** for intelligent voice command parsing
-- **Text Input Fallback** for unsupported browsers/platforms
+### Advanced Voice Control
+- **Cross-platform compatibility**: Native Web Speech API support with multiple fallback options
+- **AI-powered command parsing**: Uses Hack Club AI API for intelligent voice command interpretation. PLEASE NOTE that the Hack Club AI API endpoint uses "meta-llama/llama-4-maverick-17b-128e-instruct", which may not always identify the images correctly due to the model size. However, the specific name given by the image recognition function is the one that works for voice control.
+- **Browser-specific optimizations**: Specialized support for Chrome, Edge, Safari, and experimental Firefox support
+- **Text command fallback**: Alternative input method for unsupported browsers or environments
+- **Natural language processing**: Handles variations in command phrasing and synonyms
 
-### AI Vision System
-- **Hack Club AI API** with vision capabilities for image recognition
-- **Automatic Content Detection** for uploaded images
-- **Smart Labeling** with single-word descriptions (shop, street, person, etc.)
-- **Real-time Analysis** during file upload process
-- **Toggle Control** to enable/disable recognition features
+### AI Image Recognition
+- **Automatic content analysis**: Real-time image recognition during upload process
+- **Smart labeling system**: Single-word content descriptions (shop, street, person, food, etc.)
+- **Voice integration**: Use AI-generated labels as voice command identifiers
+- **Toggle control**: Enable or disable recognition features as needed
+- **Fallback mechanisms**: Filename-based recognition when AI analysis fails
 
-### Performance & Production
-- **Gzip Compression** for all responses
-- **HTTP Caching** with proper headers and ETags
-- **Nginx** reverse proxy configuration
-- **Systemd** service management
-- **Health Check** endpoints for load balancer monitoring
+### User Experience
+- **Multiple themes**: Coffee, Dark, and Light themes with DaisyUI components
+- **Real-time feedback**: Visual and audio feedback for all interactions
+- **Error handling**: Comprehensive error messages and recovery suggestions
+- **Performance optimization**: Caching, compression, and efficient asset delivery
 
-## 🚀 Setup Instructions
+## Technology Stack
+
+### Backend Architecture
+The server-side application is built with Python 3.11+ using the Flask framework. This choice provides flexibility while maintaining simplicity for deployment and maintenance.
+
+**Core Components:**
+- **Flask 2.3+**: Lightweight web framework with extensive plugin ecosystem
+- **Gunicorn**: Production WSGI server with multi-worker support
+- **Flask-Caching**: Intelligent caching layer supporting Redis and memory backends
+- **Flask-Limiter**: Rate limiting for API endpoints and file uploads
+- **Flask-Talisman**: Security headers and CSP management
+- **Werkzeug**: Secure file handling and routing utilities
+
+**Security Features:**
+- Input validation and sanitization for all user data
+- Secure filename generation with hash-based uniqueness
+- Rate limiting on uploads and API endpoints
+- Comprehensive security headers including CSP, HSTS, and XSS protection
+- File type validation with MIME type checking
+
+### Frontend Implementation
+The client-side application uses vanilla JavaScript for maximum compatibility and performance, styled with utility-first CSS frameworks.
+
+**Core Technologies:**
+- **Vanilla JavaScript ES6+**: No framework dependencies, ensuring fast loading and broad compatibility
+- **Tailwind CSS 3.4+**: Utility-first CSS framework with JIT compilation
+- **DaisyUI 5.0+**: Component library providing pre-styled UI elements
+- **Web Speech API**: Native browser speech recognition capabilities
+- **Canvas API**: Image processing for AI analysis
+
+**JavaScript Libraries:**
+- **Annyang.js 2.6+**: Enhanced voice command pattern matching
+- **SpeechKITT**: Voice control user interface improvements
+- **Mozilla SpeakToMe**: Experimental Firefox speech recognition support
+
+### AI Integration
+The application integrates multiple AI services to provide intelligent automation features.
+
+**Voice Command Processing:**
+- Primary: Hack Club AI API for natural language understanding
+- Fallback: Pattern matching with regular expressions
+- Error handling: Graceful degradation to manual input
+
+**Image Recognition:**
+- Primary: Hack Club AI Vision API with multiple request format attempts
+- Fallback: Filename-based pattern matching using keyword dictionaries
+- Optimization: Image resizing and format conversion for API efficiency
+
+### Production Infrastructure
+The application is designed for scalable production deployment with modern DevOps practices.
+
+**Performance Features:**
+- HTTP caching with appropriate cache headers
+- Gzip compression for all responses
+- Static asset optimization and caching
+- Redis caching for production environments
+- Health check endpoints for monitoring
+
+**Deployment Support:**
+- Nginx reverse proxy configuration
+- Systemd service management
+- Docker containerization support
+- Environment-based configuration management
+
+## Example Use Cases
+
+### Content Creator Ranking Gaming Characters
+
+A gaming content creator wants to rank fighting game characters for a video series. They upload character portraits and use voice commands to organize them quickly.
+
+**Workflow:**
+1. Upload 20 character images (PNG format, various sizes)
+2. AI automatically recognizes and labels characters as "person"
+3. Use voice commands: "Move person to S tier", "Put person in A tier"
+4. Fine-tune placement with drag-and-drop
+5. Export final tier list as JSON for video description
+
+**Voice Commands Used:**
+```
+"Move Ryu to S tier"
+"Put person in A tier"  
+"Move fighter to B tier"
+```
+
+The AI system understands these commands and maps them to the appropriate character images based on the recognition labels.
+
+### Restaurant Review Aggregation
+
+A food blogger consolidates restaurant photos from multiple review sites to create neighborhood dining tier lists.
+
+**Workflow:**
+1. Upload 30 restaurant images from various sources
+2. AI recognizes food establishments and labels them as "shop" or "food"
+3. Organize using voice: "Move shop to A tier", "Put food in C tier"
+4. Add audio clips of signature dishes to relevant tiers
+5. Share JSON file with readers for interactive exploration
+
+**Technical Implementation:**
+The application handles mixed media gracefully, displaying food images with AI-generated labels while providing audio controls for sound clips. The voice recognition system adapts to the user's accent and speaking patterns through the AI processing layer.
+
+### Product Comparison for E-commerce
+
+An e-commerce analyst compares product images for a category review, organizing them by quality and value.
+
+**Workflow:**
+1. Upload product images from multiple vendors
+2. AI labels products appropriately (vehicle, document, etc.)
+3. Create custom tier labels: "Best Value", "Premium", "Budget", "Avoid"
+4. Use voice commands for rapid sorting: "Move vehicle to Best Value tier"
+5. Export analysis for team review
+
+**API Integration Benefits:**
+The Hack Club AI API provides consistent labeling across different product types, enabling reliable voice command mapping even with diverse product catalogs.
+
+## Installation and Setup
 
 ### Prerequisites
 
-- **Python 3.11+** (recommended 3.11 or higher)
-- **Node.js 18+** and npm for Tailwind CSS compilation
-- **Modern Browser** with JavaScript enabled
-- **HTTPS Connection** for voice recognition features (required by Web Speech API)
+Before installing the application, ensure your system meets these requirements:
 
-### Quick Start
+**System Requirements:**
+- **Operating System**: Windows 10+, macOS 10.15+, or Linux (Ubuntu 18.04+ recommended)
+- **Python**: Version 3.11 or higher (3.12 recommended for performance)
+- **Node.js**: Version 18 or higher for asset compilation
+- **Browser**: Modern browser with JavaScript enabled (Chrome 90+, Firefox 88+, Safari 14+, Edge 90+)
+- **Network**: HTTPS connection required for voice recognition features (Web Speech API requirement)
+- **Memory**: Minimum 512MB RAM available for the application
+- **Storage**: At least 1GB free space for uploads and application files
 
-1. **Clone the repository**:
-   ```bash
-   git clone <repository-url>
-   cd TierList
-   ```
+### Development Installation
 
-2. **Set up Python environment**:
-   ```bash
-   # Windows PowerShell
-   python -m venv .venv
-   .\.venv\Scripts\Activate.ps1
-   
-   # Windows Command Prompt
-   python -m venv .venv
-   .venv\Scripts\activate.bat
-   
-   # Linux/macOS
-   python3 -m venv .venv
-   source .venv/bin/activate
-   ```
+**Step 1: Environment Setup**
 
-3. **Install dependencies**:
-   ```bash
-   # Python packages
-   pip install -r requirements.txt
-   
-   # Node.js packages for Tailwind CSS
-   npm install
-   ```
+Clone the repository and create a virtual environment:
 
-4. **Build CSS assets**:
-   ```bash
-   npm run build-css
-   ```
+```bash
+# Clone the repository
+git clone https://github.com/your-username/tierlist-maker.git
+cd tierlist-maker
 
-5. **Run the application**:
-   ```bash
-   python app.py
-   ```
+# Create and activate Python virtual environment
+# On Windows (PowerShell)
+python -m venv .venv
+.\.venv\Scripts\Activate.ps1
 
-6. **Open in browser**:
-   ```
-   http://localhost:5000
-   ```
+# On Windows (Command Prompt)
+python -m venv .venv
+.venv\Scripts\activate.bat
 
+# On macOS/Linux
+python3 -m venv .venv
+source .venv/bin/activate
+```
+
+**Step 2: Install Dependencies**
+
+Install both Python and Node.js dependencies:
+
+```bash
+# Install Python packages
+pip install --upgrade pip
+pip install -r requirements.txt
+
+# Install Node.js packages for CSS compilation
+npm install
+```
+
+**Step 3: Environment Configuration**
+
+Create a `.env` file in the project root directory:
+
+```env
+# Application Configuration
+FLASK_APP=app.py
+FLASK_ENV=development
+SECRET_KEY=your-development-secret-key-change-this
+
+# File Upload Configuration
+MAX_CONTENT_LENGTH=5242880  # 5MB in bytes
+UPLOAD_FOLDER=uploads
+
+# Caching Configuration
+CACHE_TYPE=simple  # Use 'redis' for production
+CACHE_DEFAULT_TIMEOUT=300
+
+# Security Configuration (development)
+WTF_CSRF_ENABLED=false  # Disabled for development convenience
+
+# Logging Configuration
+LOG_LEVEL=INFO
+```
+
+**Step 4: Asset Compilation**
+
+Build the CSS assets using Tailwind CSS:
+
+```bash
+# Build CSS for production
+npm run build-css
+
+# For development with file watching
+npm run watch-css  # Run in separate terminal
+```
+
+**Step 5: Directory Setup**
+
+Create necessary directories with proper permissions:
+
+```bash
+# Create uploads directory
+mkdir uploads
+
+# Set permissions (macOS/Linux only)
+chmod 755 uploads
+
+# Create logs directory for production use
+mkdir logs
+chmod 755 logs
+```
+
+**Step 6: Launch Development Server**
+
+Start the Flask development server:
+
+```bash
+# Activate virtual environment if not already active
+source .venv/bin/activate  # macOS/Linux
+# or
+.\.venv\Scripts\Activate.ps1  # Windows PowerShell
+
+# Start the development server
+python app.py
+```
+
+The application will be available at `http://localhost:5000`. For voice recognition features to work properly, you'll need to access the application via HTTPS. For development, you can use a tunneling service like ngrok:
+
+```bash
+# Install ngrok (https://ngrok.com/)
+ngrok http 5000
+# Use the provided HTTPS URL for full functionality
+```
 ### Development Setup
 
 #### Environment Configuration
